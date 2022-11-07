@@ -18,9 +18,11 @@ dependencies:
 - clock
 - containers
 - containers
+- deepseq
 - extra
 - haskeline
 - mtl
+- sdl2
 - split
 - text
 - time
@@ -29,6 +31,8 @@ dependencies:
 
 default-extensions:
 - BangPatterns
+- DeriveAnyClass
+- DeriveGeneric
 - DuplicateRecordFields
 - EmptyCase
 - FlexibleContexts

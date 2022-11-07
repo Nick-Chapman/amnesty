@@ -1,6 +1,5 @@
 
-module System (Pix,top)
-  where
+module System (Pix,top) where
 
 import Data.Word8 (Word8)
 import Eff (Phase(..),Eff(..))
