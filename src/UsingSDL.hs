@@ -16,7 +16,7 @@ import Types (Picture(..),XY(..),RGB(..),Key(..),Keys(..))
 import qualified Data.Map.Strict as Map (lookup,fromList)
 import qualified Data.Set as Set (empty,insert,delete)
 import qualified Data.Text as Text (pack)
-import qualified Interaction (State,initState,runForOneFrame)
+import qualified Interaction (State,state0,runForOneFrame)
 import qualified SDL
 
 data ScreenSpec = ScreenSpec
@@ -46,7 +46,7 @@ main = do
   renderer <- SDL.createRenderer win (-1) SDL.defaultRenderer
   let assets = DrawAssets { renderer, ss, offset = border, accpix }
   let keys = Keys { pressed = Set.empty }
-  let world0 = World { state = Interaction.initState, keys, frame = 0, accNanos = 0 }
+  let world0 = World { state = Interaction.state0, keys, frame = 0, accNanos = 0 }
   let
     loop :: World -> IO ()
     loop World{state,keys,frame,accNanos} = do

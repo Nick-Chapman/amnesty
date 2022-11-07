@@ -1,5 +1,5 @@
 
-module Types
+module Types -- TODO: rename PicTypes
   ( Picture(..)
   , XY(..)
   , RGB(..)
@@ -17,7 +17,7 @@ data Picture where
   Pictures :: [Picture] -> Picture
   deriving (Generic,NFData)
 
-data XY a = XY { x :: a, y :: a } deriving (Eq,Ord,Generic,NFData)
+data XY a = XY { x :: a, y :: a } deriving (Eq,Ord,Generic,NFData,Functor)
 data RGB a = RGB { r :: a, g :: a, b :: a } deriving (Generic,NFData)
 
 data Key
