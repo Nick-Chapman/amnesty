@@ -12,14 +12,11 @@ main = do
 
 top1 :: IO ()
 top1 = do
-  let state0 = State { reg1 = 42, rom = theRom }
-  let s0 = state0
-  let (s1,v1) = emulate s0 system
-  display v1
-  let (_,v2) = emulate s1 system
-  display v2
+  let xs = emu sys
+  sequence_ (map display (take 3 xs))
+  pure ()
 
-display :: Phase p => ScanLine p -> IO ()
+display :: [Pix DuringEmulation] -> IO ()
 display line = do
   print ("display",line)
 
@@ -29,17 +26,23 @@ data DuringEmulation
 
 instance Phase DuringEmulation where
   type Byte DuringEmulation = Word8
+  type Col DuringEmulation = Colour
+
+data Colour = Colour Word8 deriving Show
 
 type Effect a = Eff DuringEmulation a
 
-emulate :: State -> Effect a -> Res a
-emulate s0 e0 = loop s0 e0 $ \s a -> (s,a)
+emu :: Effect a -> [a]
+emu e0 = outer state0
   where
-    loop :: State -> Effect a -> (State -> a -> Res r) -> Res r
-    loop s e k = case e of
+    outer s = inner s e0 $ \s a -> a : outer s
+
+    inner :: State -> Effect b -> (State -> b -> r) -> r
+    inner s e k = case e of
       Ret x -> k s x
-      Bind e f -> loop s e $ \s a -> loop s (f a) k
+      Bind e f -> inner s e $ \s a -> inner s (f a) k
       IncB b -> k s (b+1)
+      LitB n -> k s n
       LookupRom b -> do
         let State{rom} = s
         k s (romLookup rom b)
@@ -48,11 +51,15 @@ emulate s0 e0 = loop s0 e0 $ \s a -> (s,a)
       GettPPUReg1 -> do
         let State{reg1} = s
         k s reg1
+      MakeCol b -> do
+        k s (Colour b)
 
-type Res r = (State,r)
 
 -- concrete state of the entire system; whatever is necessary to emulate
 data State = State { reg1 :: Word8, rom :: Rom }
+
+state0 :: State
+state0 = State { reg1 = 42, rom = theRom }
 
 -- type for 256 byte rom
 data Rom = Rom (Map Word8 Word8)
@@ -62,40 +69,26 @@ romLookup (Rom m) k =
   maybe (error (show ("romLookup",k))) id $ Map.lookup k m
 
 theRom :: Rom
-theRom = Rom m
-  where m = Map.fromList [ (b,b) | b <- [0..255] ]
+theRom = Rom $ Map.fromList [ (b,b) | b <- [0..255] ]
 
 --[system]------------------------------------------------------------
 
--- TODO: abstract effect type (infinite/clocked)
--- data ClockedEff a
---   ClockedEff [Eff a]
+sys :: Eff p [Pix p]
+sys = sequence [ pixel (x,y) | x <- [1..4], y <- [1..3] ]
 
-system :: Eff p (ScanLine p)
-system = ppuLine
+data Pix p = Pix (Byte p, Byte p, Col p)
+deriving instance Phase p => Show (Pix p)
 
-data ScanLine p = ScanLine [Byte p]
-deriving instance Phase p => Show (ScanLine p)
+pixel :: (Word8,Word8) -> Eff p (Pix p)
+pixel (x,y) = do
+  let n = y*10 + x
+  a <- LitB n
+  b <- LookupRom a
+  c <- MakeCol b
+  x <- LitB x
+  y <- LitB y
+  pure (Pix (x,y,c))
 
-ppuLine :: Eff p (ScanLine p)
-ppuLine = do
-  bs <- sequence (replicate width ppuNext)
-  pure (ScanLine bs)
-    where width = 10
-
-ppuNext :: Eff p (Byte p)
-ppuNext = do
-  a <- GettPPUReg1
-  a' <- IncB a
-  SetPPUReg1 a'
-  d <- ppuMM_lookup a
-  pure d
-
--- The MM is the lookup function!
--- does address decoding and then looks in some rom (or ram!)
-ppuMM_lookup :: Byte p -> Eff p (Byte p)
-ppuMM_lookup b = do
-  LookupRom b
 
 --[effect]------------------------------------------------------------
 
@@ -104,14 +97,20 @@ instance Applicative (Eff p) where pure = return; (<*>) = ap
 instance Monad (Eff p) where return = Ret; (>>=) = Bind
 
 -- phase
-class Show (Byte p) => Phase p where
+class ( Show (Byte p)
+      , Show (Col p)
+      ) => Phase p where
   type Byte p
+  type Col p
 
 -- abstract effect type (finite)
 data Eff p x where
   Ret :: x -> Eff p x
   Bind :: Eff p x -> (x -> Eff p y) -> Eff p y
   IncB :: Byte p -> Eff p (Byte p)
+  LitB :: Word8 -> Eff p (Byte p)
+
+  MakeCol :: Byte p -> Eff p (Col p)
 
   -- some rom containing 256 bytes
   LookupRom :: Byte p -> Eff p (Byte p)
