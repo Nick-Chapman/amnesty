@@ -2,8 +2,7 @@
 module PPU (effect) where
 
 import Eff (Eff(..),Byte)
-import Types (XY(..),RGB(..),HiLo(..))
---import Data.Word8 (Word8)
+import Types (XY(..),RGB(..),HiLo(..),Reg(..))
 
 effect :: Eff p ()
 effect = do
@@ -92,7 +91,13 @@ pickTileForCoarse coarse = do
   HiLo{hi=hy,lo=ly} <- nibbles y
   zero <- LitB 0
   showLeft <- EqB hx zero
-  let pat = if showLeft then PatL else PatR
+
+  swapLR <- do
+    reg1 <- GetReg Reg1
+    TestBit reg1 0
+
+  let pat = if (showLeft == swapLR) then PatL else PatR
+
   yon <- EqB hy zero
   if not yon then pure Nothing else do
     shifted <- ly `ShiftL` 4

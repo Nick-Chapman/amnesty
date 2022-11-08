@@ -1,7 +1,4 @@
 
-Reinstate some control using keys.
-Type for 8-bit regs & shared Set/get effects.
-
 6bit col from PPU; convert to RGB via fixed mapping in UsingSDL
 Hash pictures (256x240 6bit cols) for regression. and logging
 

@@ -1,11 +1,12 @@
 
-module Types -- TODO: rename PicTypes
+module Types
   ( Picture(..)
   , XY(..)
   , RGB(..)
   , Key(..)
   , Keys(..)
   , HiLo(..)
+  , Reg(..)
   ) where
 
 import Control.DeepSeq (NFData)
@@ -34,3 +35,6 @@ instance Show a => Show (XY a) where show XY{x,y} = show (x,y)
 instance Show a => Show (RGB a) where show RGB{r,g,b} = "RGB" ++ show (r,g,b)
 
 data HiLo a = HiLo { hi :: a, lo :: a } deriving (Eq,Ord,Generic,NFData,Functor,Show)
+
+data Reg = Reg1 | Reg2
+  deriving (Eq,Ord,Show,Generic,NFData)

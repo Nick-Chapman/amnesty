@@ -12,8 +12,8 @@ import Eff (Phase(..),Eff(..))
 import GHC.Generics (Generic)
 import NesFile (NesFile(..))
 import Rom8k (Rom8k)
-import Types (Picture(..),XY(..),RGB(..),Keys(..),HiLo(..))
-import qualified Data.Map as Map (empty,toList,insert)
+import Types (Picture(..),XY(..),RGB(..),Keys(..),HiLo(..),Reg(..))
+import qualified Data.Map as Map (empty,toList,insert,lookup)
 import qualified Rom8k (read)
 
 data DuringEmulation
@@ -33,16 +33,14 @@ makeContext nesFile = do
 
 data State = State
   { emitted :: Map (XY Word8) (RGB Word8)
-  , reg1 :: Word8
-  , reg2 :: Word8
+  , regs :: Map Reg Word8
   }
   deriving (Generic,NFData)
 
 state0 :: State
 state0 = State
   { emitted = Map.empty
-  , reg1 = 100
-  , reg2 = 100
+  , regs = Map.empty
   }
 
 emulate :: Effect () -> Context -> Keys -> State -> (Picture,State)
@@ -52,39 +50,39 @@ emulate e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkPicture s
     loop s e k = case e of
       Ret x -> k s x
       Bind e f -> loop s e $ \s a -> loop s (f a) k
-      LitB n -> k s n
-      AddB a b -> k s (a+b)
+
+      IsPressed key -> do
+        k s (key `elem` pressed)
       EmitPixel xy rgb -> do
         let State{emitted} = s
         k s { emitted = Map.insert xy rgb emitted } ()
-      IsPressed key -> do
-        k s (key `elem` pressed)
-      SetPPUReg1 b ->
-        k s { reg1 = b } ()
-      GetPPUReg1 -> do
-        let State{reg1} = s
-        k s reg1
-      SetPPUReg2 b ->
-        k s { reg2 = b } ()
-      GetPPUReg2 -> do
-        let State{reg2} = s
-        k s reg2
+
       ReadVmem a -> do
         k s (readVmem context a)
+      GetReg r -> do
+        let State{regs} = s
+        k s (maybe 0 id $ Map.lookup r regs)
+      SetReg r b -> do
+        let State{regs} = s
+        k s { regs = Map.insert r b regs } ()
+
+      LitB n -> k s n
       TestBit b n -> do
         k s (b `testBit` n)
       TestBitB b n -> do
         k s (b `testBit` fromIntegral n)
       EqB b1 b2 -> do
         k s (b1 == b2)
+      AddB a b -> do
+        k s (a+b)
       BwAnd b1 b2 -> do
         k s (b1 .&. b2)
       BwOr b1 b2 -> do
         k s (b1 .|. b2)
-      ShiftR b n -> do
-        k s (b `shiftR` n)
       ShiftL b n -> do
         k s (b `shiftL` n)
+      ShiftR b n -> do
+        k s (b `shiftR` n)
 
 readVmem :: Context -> HiLo Word8 -> Word8
 readVmem Context{chr1} HiLo{hi,lo} = do

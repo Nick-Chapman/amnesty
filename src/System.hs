@@ -2,41 +2,31 @@
 module System (top) where
 
 import Eff (Eff(..))
+import Types (Key(..),Reg(..))
 import qualified PPU (effect)
---import Types (Key(..))
 
 top :: Eff p ()
 top = do
   PPU.effect
-  --doKeyX
-  --doKeyZ
+  doKeyX
+  doKeyZ
 
-{-
 doKeyX :: Eff p ()
 doKeyX = do
   b <- IsPressed KeyX
   if not b then pure () else do
-    incrementReg1
-    pure ()
+    incrementR Reg1
 
 doKeyZ :: Eff p ()
 doKeyZ = do
   b <- IsPressed KeyZ
   if not b then pure () else do
-    incrementReg2
-    pure ()
+    incrementR Reg2
 
-incrementReg1 :: Eff p ()
-incrementReg1 = do
-  v <- GetPPUReg1
+incrementR :: Reg -> Eff p ()
+incrementR reg = do
+  v <- GetReg reg
   one <- LitB 1
   v' <- AddB v one
-  SetPPUReg1 v'
+  SetReg reg v'
 
-incrementReg2 :: Eff p ()
-incrementReg2 = do
-  v <- GetPPUReg2
-  one <- LitB 1
-  v' <- AddB v one
-  SetPPUReg2 v'
--}
