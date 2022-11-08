@@ -12,7 +12,7 @@ import SDL (Renderer,Rectangle(..),V2(..),V4(..),Point(P),($=))
 --import System.Clock (TimeSpec(..),Clock(Monotonic),getTime) -- TODO: reinstate?
 import Text.Printf (printf)
 import Types (Picture(..),XY(..),RGB(..),Key(..),Keys(..))
-import qualified Data.Map.Strict as Map (lookup,fromList)
+import qualified Data.Map.Strict as Map (lookup,fromList,toList)
 import qualified Data.Set as Set (empty,insert,delete)
 import qualified Data.Text as Text (pack)
 import qualified Emu as Emu (Context,State,state0,emulate,Result(..))
@@ -79,8 +79,9 @@ main context = do
   SDL.quit
 
 printStatLine :: World -> Emu.Result -> IO ()
-printStatLine World{frame,keys} Emu.Result{frameHash,regs} = do
-  printf "%03d %s %s %s\n" frame (show keys) (show frameHash) (show regs)
+printStatLine World{frame,keys} Emu.Result{frameHash,regs,vmemReadCount=v} = do
+  printf "%03d %s %s #v=%d regs=%s\n"
+    frame (show keys) (show frameHash) v (show (Map.toList regs))
 
 {-printStatLine :: World -> Emu.FrameHash -> IO ()
 printStatLine World{frame,accNanos} frameHash = do

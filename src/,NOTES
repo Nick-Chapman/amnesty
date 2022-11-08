@@ -3,7 +3,6 @@ intro type Col for 6bit colours
 convert 6bit col to RGB via fixed mapping in UsingSDL
 
 Better interface between Emu and UsingSDL (Action) allow logging
-Count number of vmem reads when gen picture - show in per frame log
 
 Have PPU generate picture from nametable
 PPU generate picture using pallet info in nametable(attribute part)

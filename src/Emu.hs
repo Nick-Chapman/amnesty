@@ -37,6 +37,7 @@ data Result = Result
   , picture :: Picture
   , frameHash :: FrameHash
   , regs :: Map Reg Word8
+  , vmemReadCount :: Int
   }
 
 data State = State
@@ -44,6 +45,7 @@ data State = State
   , countEmitted :: Int
   , emittedAcc :: [Word8] -- TODO: type Col to assert the 6bit restriction
   , regs :: Map Reg Word8
+  , vmemReadCount :: Int
   }
 
 state0 :: State
@@ -52,13 +54,14 @@ state0 = State
   , countEmitted = 0
   , emittedAcc = []
   , regs = Map.empty
+  , vmemReadCount = 0
   }
 
 emulate :: Effect () -> Context -> Keys -> State -> Result
 emulate e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkPicture s
   where
     loop :: State -> Effect b -> (State -> b -> r) -> r
-    loop s e k = case e of
+    loop s@State{vmemReadCount} e k = case e of
       Ret x -> k s x
       Bind e f -> loop s e $ \s a -> loop s (f a) k
 
@@ -69,7 +72,8 @@ emulate e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkPicture s
         k (emitPixel xy col s) ()
 
       ReadVmem a -> do
-        k s (readVmem context a)
+        k s { vmemReadCount = 1 + vmemReadCount } (readVmem context a)
+
       GetReg r -> do
         let State{regs} = s
         k s (maybe 0 id $ Map.lookup r regs)
@@ -125,20 +129,25 @@ emitPixel xy col s = do
         }
 
 mkPicture :: State -> Result
-mkPicture state0@State{emitted,emittedAcc,countEmitted=c,regs} = do
+mkPicture state0@State{emitted,emittedAcc,countEmitted=c,regs,vmemReadCount} = do
   let expected = 256*240
   let n = length emittedAcc
   if (c /= expected) || (n /= expected)
     then error (show ("mkPicture,c/n=",c,n,"expected=",expected))
     else do
     let
-      state = state0 { emitted = Map.empty , countEmitted = 0 , emittedAcc = []}
+      state = state0
+        { emitted = Map.empty
+        , countEmitted = 0
+        , emittedAcc = []
+        , vmemReadCount = 0
+        }
       picture = Pictures
         [ Draw (fmap fromIntegral xy) rgb
         | (xy,rgb) <- Map.toList emitted
         ]
       frameHash = makeFrameHash (reverse emittedAcc)
-    Result { state, picture, frameHash, regs }
+    Result { state, picture, frameHash, regs, vmemReadCount }
 
 data FrameHash = FrameHash Int
 
