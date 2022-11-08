@@ -16,8 +16,9 @@ import Types (Picture(..),XY(..),RGB(..),Key(..),Keys(..))
 import qualified Data.Map.Strict as Map (lookup,fromList)
 import qualified Data.Set as Set (empty,insert,delete)
 import qualified Data.Text as Text (pack)
-import qualified Interaction (State,state0,runForOneFrame)
+import qualified Emu as Emu (Context,State,state0,emulate)
 import qualified SDL
+import qualified System (top)
 
 data ScreenSpec = ScreenSpec
   { sf ::Int
@@ -25,14 +26,15 @@ data ScreenSpec = ScreenSpec
   }
 
 data World = World
-  { state :: Interaction.State
+  { state :: Emu.State
   , keys :: Keys
   , frame :: Int
   , accNanos :: Int64
   }
 
-main :: IO ()
-main = do
+main :: Emu.Context -> IO ()
+main context = do
+  let the_effect = System.top
   let accpix = False
   let ss = ScreenSpec {sf = 2,size = XY { x = 256, y = 240 } }
   let! _ = keyMapTable
@@ -46,13 +48,14 @@ main = do
   renderer <- SDL.createRenderer win (-1) SDL.defaultRenderer
   let assets = DrawAssets { renderer, ss, offset = border, accpix }
   let keys = Keys { pressed = Set.empty }
-  let world0 = World { state = Interaction.state0, keys, frame = 0, accNanos = 0 }
+  let state0 = Emu.state0
+  let world0 = World { state = state0, keys, frame = 0, accNanos = 0 }
   let
     loop :: World -> IO ()
     loop World{state,keys,frame,accNanos} = do
 
       (state,xNanos) <- measureNanos $ do
-        let x = Interaction.runForOneFrame state keys
+        let x = Emu.emulate the_effect context keys state
         let (picture,state) = x `deepseq` x
         drawEverything assets picture
         pure state

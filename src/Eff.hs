@@ -24,6 +24,9 @@ data Eff p x where
   SetPPUReg2 :: Byte p -> Eff p ()
   GetPPUReg2 :: Eff p (Byte p)
 
+  ReadVmem :: Byte p -> Eff p (Byte p) -- TODO: take 16bit? Addrress
+  TestBit :: Byte p -> Int -> Eff p Bool
+
 instance Functor (Eff p) where fmap = liftM
 instance Applicative (Eff p) where pure = return; (<*>) = ap
 instance Monad (Eff p) where return = Ret; (>>=) = Bind

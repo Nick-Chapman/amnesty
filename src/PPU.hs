@@ -7,6 +7,42 @@ import Types (XY(..),RGB(..))
 effect :: Eff p ()
 effect = do
   drawSquare
+  drawTile
+
+drawTile :: forall p. Eff p ()
+drawTile = do
+  full <- LitB 255
+  zero <- LitB 0
+  let yellow = RGB { r = full, g = full, b = zero }
+  let black = RGB { r = zero, g = zero, b = zero }
+  posX <- LitB 50
+  posY <- LitB 50
+
+  base <- GetPPUReg1
+  let
+    testPix :: Int -> Int -> Eff p Bool -- x/y in range 0..7
+    testPix x y = do
+      offset <- LitB (fromIntegral x)
+      a <- AddB base offset
+      b <- ReadVmem a
+      TestBit b y
+
+  sequence_
+    [ do
+        on <- testPix xi yi
+        xi <- LitB (fromIntegral xi)
+        yi <- LitB (fromIntegral yi)
+        x <- AddB posX xi
+        y <- AddB posY yi
+
+        let xy = XY { x, y }
+
+        let rgb = if on then yellow else black
+        EmitPixel xy rgb
+    | xi <- [0::Int ..7]
+    , yi <- [0::Int ..7]
+    ]
+
 
 drawSquare :: Eff p ()
 drawSquare = do

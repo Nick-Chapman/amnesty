@@ -1,8 +1,9 @@
 
 module Amnesty (main) where
 
-import qualified UsingSDL (main)
+import qualified Emu (makeContext)
 import qualified NesFile (load)
+import qualified UsingSDL (main)
 
 main :: IO ()
 main = do
@@ -10,5 +11,6 @@ main = do
   let filename = "carts/smb.nes"
   nesFile <- NesFile.load filename
   print nesFile
-  let _ = UsingSDL.main
+  let context = Emu.makeContext nesFile
+  UsingSDL.main context
   pure ()
