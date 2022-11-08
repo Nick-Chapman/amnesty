@@ -19,6 +19,7 @@ dependencies:
 - containers
 - containers
 - extra
+- hashable
 - haskeline
 - mtl
 - sdl2

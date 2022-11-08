@@ -2,14 +2,17 @@
 module Emu
   ( Context, makeContext
   , State , state0, emulate
+  , FrameHash
   ) where
 
 import Data.Bits (testBit,(.&.),(.|.),shiftR,shiftL)
+import Data.Hashable (hash)
 import Data.Map (Map)
 import Data.Word (Word8,Word16)
 import Eff (Phase(..),Eff(..))
 import NesFile (NesFile(..))
 import Rom8k (Rom8k)
+import Text.Printf (printf)
 import Types (Picture(..),XY(..),RGB(..),Keys(..),HiLo(..),Reg(..))
 import qualified Data.Map as Map (empty,toList,insert,lookup)
 import qualified Rom8k (read)
@@ -32,6 +35,7 @@ makeContext nesFile = do
 data State = State
   { emitted :: Map (XY Word8) (RGB Word8)
   , countEmitted :: Int
+  , emittedAcc :: [Word8] -- TODO: type Col to assert the 6bit restriction
   , regs :: Map Reg Word8
   }
 
@@ -39,10 +43,11 @@ state0 :: State
 state0 = State
   { emitted = Map.empty
   , countEmitted = 0
+  , emittedAcc = []
   , regs = Map.empty
   }
 
-emulate :: Effect () -> Context -> Keys -> State -> (Picture,State)
+emulate :: Effect () -> Context -> Keys -> State -> (Picture,FrameHash,State)
 emulate e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkPicture s
   where
     loop :: State -> Effect b -> (State -> b -> r) -> r
@@ -54,17 +59,7 @@ emulate e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkPicture s
         k s (key `elem` pressed)
 
       EmitPixel xy col -> do
-        let State{emitted,countEmitted=c} = s
-        let expectedXY =
-              XY { x = fromIntegral (c `mod` 256)
-                 , y = fromIntegral (c `div` 256)
-                 }
-        case xy /= expectedXY of
-          True -> error (show ("EmitPixel:c=",c,"xy=",xy,"expected=",expectedXY))
-          False ->
-            k s { emitted = Map.insert xy (col2rgb col) emitted
-                , countEmitted = 1 + c
-                } ()
+        k (emitPixel xy col s) ()
 
       ReadVmem a -> do
         k s (readVmem context a)
@@ -107,15 +102,44 @@ readVmem Context{chr1} HiLo{hi,lo} = do
   let a :: Word16 = (fromIntegral hi `shiftL` 8) .|. fromIntegral lo
   Rom8k.read chr1 a
 
-mkPicture :: State -> (Picture,State)
-mkPicture state@State{emitted,countEmitted=c} = do
+emitPixel :: XY Word8 -> Word8 -> State -> State
+emitPixel xy col s = do
+  let State{emitted,countEmitted=c,emittedAcc} = s
+  let expectedXY =
+        XY { x = fromIntegral (c `mod` 256)
+           , y = fromIntegral (c `div` 256)
+           }
+  case xy /= expectedXY of
+    True -> error (show ("EmitPixel:c=",c,"xy=",xy,"expected=",expectedXY))
+    False ->
+      s { emitted = Map.insert xy (col2rgb col) emitted
+        , countEmitted = 1 + c
+        , emittedAcc = col : emittedAcc
+        }
+
+mkPicture :: State -> (Picture,FrameHash,State)
+mkPicture state@State{emitted,emittedAcc,countEmitted=c} = do
   let expected = 256*240
-  if c /= expected
-    then error (show ("mkPicture,c=",c,"expected=",expected))
+  let n = length emittedAcc
+  if (c /= expected) || (n /= expected)
+    then error (show ("mkPicture,c/n=",c,n,"expected=",expected))
     else do
-    (picture, state { emitted = Map.empty, countEmitted = 0 })
+    (picture, frameHash, state
+      { emitted = Map.empty
+      , countEmitted = 0
+      , emittedAcc = []
+      })
   where
+    frameHash = makeFrameHash (reverse emittedAcc)
     picture = Pictures
       [ Draw (fmap fromIntegral xy) rgb
       | (xy,rgb) <- Map.toList emitted
       ]
+
+data FrameHash = FrameHash Int
+
+makeFrameHash :: [Word8] -> FrameHash
+makeFrameHash cols = FrameHash (hash cols)
+
+instance Show FrameHash where
+  show (FrameHash n) = printf "[%xd]" n

@@ -15,7 +15,7 @@ import Types (Picture(..),XY(..),RGB(..),Key(..),Keys(..))
 import qualified Data.Map.Strict as Map (lookup,fromList)
 import qualified Data.Set as Set (empty,insert,delete)
 import qualified Data.Text as Text (pack)
-import qualified Emu as Emu (Context,State,state0,emulate)
+import qualified Emu as Emu (Context,State,state0,emulate,FrameHash)
 import qualified SDL
 import qualified System (top)
 
@@ -53,11 +53,11 @@ main context = do
     loop :: World -> IO ()
     loop World{state,keys,frame,accNanos} = do
 
-      (state,xNanos) <- measureNanos $ do
+      ((state,frameHash),xNanos) <- measureNanos $ do
         let x = Emu.emulate the_effect context keys state
-        let (picture,state) = x -- `deepseq` x
+        let (picture,frameHash,state) = x -- `deepseq` x
         drawEverything assets picture
-        pure state
+        pure (state,frameHash)
 
       events <- SDL.pollEvents
       let interesting = [ i | e <- events, i <- interestingOf e ]
@@ -66,7 +66,7 @@ main context = do
       threadDelay (1000000 `div` 60) -- 1/60 sec
 
       let world = World { state, keys, frame = frame+1, accNanos = accNanos + xNanos }
-      printStatLine world
+      printStatLine world frameHash
       loop world
 
   setColor renderer darkGrey
@@ -77,8 +77,8 @@ main context = do
   SDL.destroyWindow win
   SDL.quit
 
-printStatLine :: World -> IO ()
-printStatLine World{frame,accNanos} = do
+printStatLine :: World -> Emu.FrameHash -> IO ()
+printStatLine World{frame,accNanos} frameHash = do
   let
     emuSecsPerFrame = 1.0 / 60.0
     gig :: Double = 1_000_000_000
@@ -86,8 +86,8 @@ printStatLine World{frame,accNanos} = do
     elaspedSecs :: Double = fromIntegral accNanos / gig
     speedup = emulatedSecs / elaspedSecs
     line =
-      printf "%d, emu %.03f, elap %.03f, speedupX %.3f"
-      frame emulatedSecs elaspedSecs speedup
+      printf "%d, emu %.03f, elap %.03f, speedupX %.3f, hash=%s"
+      frame emulatedSecs elaspedSecs speedup (show frameHash)
   putStrLn line
 
 measureNanos :: IO a -> IO (a, Int64)
