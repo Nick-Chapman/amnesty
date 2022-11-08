@@ -2,7 +2,6 @@
 module UsingSDL (main) where
 
 import Control.Concurrent (threadDelay)
-import Control.DeepSeq (deepseq)
 import Control.Monad (when)
 import Data.List.Extra (groupSort)
 import Data.Map (Map)
@@ -56,7 +55,7 @@ main context = do
 
       (state,xNanos) <- measureNanos $ do
         let x = Emu.emulate the_effect context keys state
-        let (picture,state) = x `deepseq` x
+        let (picture,state) = x -- `deepseq` x
         drawEverything assets picture
         pure state
 

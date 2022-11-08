@@ -4,12 +4,10 @@ module Emu
   , State , state0, emulate
   ) where
 
-import Control.DeepSeq (NFData)
 import Data.Bits (testBit,(.&.),(.|.),shiftR,shiftL)
 import Data.Map (Map)
 import Data.Word (Word8,Word16)
 import Eff (Phase(..),Eff(..))
-import GHC.Generics (Generic)
 import NesFile (NesFile(..))
 import Rom8k (Rom8k)
 import Types (Picture(..),XY(..),RGB(..),Keys(..),HiLo(..),Reg(..))
@@ -35,7 +33,6 @@ data State = State
   { emitted :: Map (XY Word8) (RGB Word8)
   , regs :: Map Reg Word8
   }
-  deriving (Generic,NFData)
 
 state0 :: State
 state0 = State

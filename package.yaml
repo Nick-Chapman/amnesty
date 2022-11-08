@@ -18,7 +18,6 @@ dependencies:
 - clock
 - containers
 - containers
-- deepseq
 - extra
 - haskeline
 - mtl

@@ -4,7 +4,6 @@ Hash pictures (256x240 6bit cols) for regression. and logging
 
 Emu: ensure emitted pixels are in order and cover all 256x240
 
-Remove deepseq etc
 Better interface between Emu and UsingSDL (Action) allow logging
 Count number of vmem reads when gen picture - show in per frame log
 
