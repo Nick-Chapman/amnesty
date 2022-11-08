@@ -9,13 +9,13 @@ import Data.Word8 (Word8)
 import Foreign.C.Types (CInt)
 import GHC.Int (Int64)
 import SDL (Renderer,Rectangle(..),V2(..),V4(..),Point(P),($=))
-import System.Clock (TimeSpec(..),Clock(Monotonic),getTime)
+--import System.Clock (TimeSpec(..),Clock(Monotonic),getTime) -- TODO: reinstate?
 import Text.Printf (printf)
 import Types (Picture(..),XY(..),RGB(..),Key(..),Keys(..))
 import qualified Data.Map.Strict as Map (lookup,fromList)
 import qualified Data.Set as Set (empty,insert,delete)
 import qualified Data.Text as Text (pack)
-import qualified Emu as Emu (Context,State,state0,emulate,FrameHash)
+import qualified Emu as Emu (Context,State,state0,emulate,Result(..))
 import qualified SDL
 import qualified System (top)
 
@@ -53,20 +53,21 @@ main context = do
     loop :: World -> IO ()
     loop World{state,keys,frame,accNanos} = do
 
-      ((state,frameHash),xNanos) <- measureNanos $ do
-        let x = Emu.emulate the_effect context keys state
-        let (picture,frameHash,state) = x -- `deepseq` x
-        drawEverything assets picture
-        pure (state,frameHash)
-
       events <- SDL.pollEvents
       let interesting = [ i | e <- events, i <- interestingOf e ]
       if Quit `elem` interesting then pure () else do --quit
       keys <- pure $ foldl insertInteresting keys interesting
-      threadDelay (1000000 `div` 60) -- 1/60 sec
+
+      --(x,xNanos) <- measureNanos $ do pure (Emu.emulate the_effect context keys state)
+      let res = Emu.emulate the_effect context keys state
+      let xNanos = 0
+      let Emu.Result{picture,state} = res
+      drawEverything assets picture
 
       let world = World { state, keys, frame = frame+1, accNanos = accNanos + xNanos }
-      printStatLine world frameHash
+      printStatLine world res
+
+      threadDelay (1000000 `div` 60) -- 1/60 sec
       loop world
 
   setColor renderer darkGrey
@@ -77,7 +78,11 @@ main context = do
   SDL.destroyWindow win
   SDL.quit
 
-printStatLine :: World -> Emu.FrameHash -> IO ()
+printStatLine :: World -> Emu.Result -> IO ()
+printStatLine World{frame,keys} Emu.Result{frameHash,regs} = do
+  printf "%03d %s %s %s\n" frame (show keys) (show frameHash) (show regs)
+
+{-printStatLine :: World -> Emu.FrameHash -> IO ()
 printStatLine World{frame,accNanos} frameHash = do
   let
     emuSecsPerFrame = 1.0 / 60.0
@@ -88,9 +93,9 @@ printStatLine World{frame,accNanos} frameHash = do
     line =
       printf "%d, emu %.03f, elap %.03f, speedupX %.3f, hash=%s"
       frame emulatedSecs elaspedSecs speedup (show frameHash)
-  putStrLn line
+  putStrLn line-}
 
-measureNanos :: IO a -> IO (a, Int64)
+{-measureNanos :: IO a -> IO (a, Int64) -- TODO: reinstate
 measureNanos io = do
   before <- getTime Monotonic
   a <- io
@@ -98,7 +103,7 @@ measureNanos io = do
   let TimeSpec{sec,nsec} = after - before
   let nanos = gig * sec + nsec
   return (a,nanos)
-  where gig = 1_000_000_000
+  where gig = 1_000_000_000-}
 
 data InterestingEvent = Press Key | Release Key | Quit deriving Eq
 

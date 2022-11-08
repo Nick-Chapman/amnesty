@@ -7,9 +7,9 @@ import qualified PPU (effect)
 
 top :: Eff p ()
 top = do
-  PPU.effect
   doKeyX
   doKeyZ
+  PPU.effect
 
 doKeyX :: Eff p ()
 doKeyX = do

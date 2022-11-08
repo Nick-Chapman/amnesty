@@ -2,7 +2,7 @@
 module Emu
   ( Context, makeContext
   , State , state0, emulate
-  , FrameHash
+  , FrameHash, Result(..)
   ) where
 
 import Data.Bits (testBit,(.&.),(.|.),shiftR,shiftL)
@@ -32,6 +32,13 @@ makeContext nesFile = do
   let NesFile { chrs = [chr1] } = nesFile
   Context { chr1 }
 
+data Result = Result
+  { state :: State
+  , picture :: Picture
+  , frameHash :: FrameHash
+  , regs :: Map Reg Word8
+  }
+
 data State = State
   { emitted :: Map (XY Word8) (RGB Word8)
   , countEmitted :: Int
@@ -47,7 +54,7 @@ state0 = State
   , regs = Map.empty
   }
 
-emulate :: Effect () -> Context -> Keys -> State -> (Picture,FrameHash,State)
+emulate :: Effect () -> Context -> Keys -> State -> Result
 emulate e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkPicture s
   where
     loop :: State -> Effect b -> (State -> b -> r) -> r
@@ -117,24 +124,21 @@ emitPixel xy col s = do
         , emittedAcc = col : emittedAcc
         }
 
-mkPicture :: State -> (Picture,FrameHash,State)
-mkPicture state@State{emitted,emittedAcc,countEmitted=c} = do
+mkPicture :: State -> Result
+mkPicture state0@State{emitted,emittedAcc,countEmitted=c,regs} = do
   let expected = 256*240
   let n = length emittedAcc
   if (c /= expected) || (n /= expected)
     then error (show ("mkPicture,c/n=",c,n,"expected=",expected))
     else do
-    (picture, frameHash, state
-      { emitted = Map.empty
-      , countEmitted = 0
-      , emittedAcc = []
-      })
-  where
-    frameHash = makeFrameHash (reverse emittedAcc)
-    picture = Pictures
-      [ Draw (fmap fromIntegral xy) rgb
-      | (xy,rgb) <- Map.toList emitted
-      ]
+    let
+      state = state0 { emitted = Map.empty , countEmitted = 0 , emittedAcc = []}
+      picture = Pictures
+        [ Draw (fmap fromIntegral xy) rgb
+        | (xy,rgb) <- Map.toList emitted
+        ]
+      frameHash = makeFrameHash (reverse emittedAcc)
+    Result { state, picture, frameHash, regs }
 
 data FrameHash = FrameHash Int
 
@@ -142,4 +146,4 @@ makeFrameHash :: [Word8] -> FrameHash
 makeFrameHash cols = FrameHash (hash cols)
 
 instance Show FrameHash where
-  show (FrameHash n) = printf "[%xd]" n
+  show (FrameHash n) = printf "[%s]" (take 4 (printf "%xd" n) :: String)

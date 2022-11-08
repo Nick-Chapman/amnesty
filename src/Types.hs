@@ -24,9 +24,23 @@ data Key
   | KeyShift
   | KeyZ
   | KeyX
-  deriving (Eq,Ord,Enum,Bounded,Show)
+  deriving (Eq,Ord,Enum,Bounded)
+
+instance Show Key where
+  show = \case
+    KeyZ -> "z"
+    KeyX -> "x"
+    KeyShift -> "S"
+    KeyEnter -> "E"
+
+allKeys :: [Key]
+allKeys = [KeyZ,KeyX,KeyShift,KeyEnter]
 
 newtype Keys = Keys { pressed :: Set Key }
+
+instance Show Keys where
+  show Keys{pressed} =
+    concat [ if b then show k else "-" | k <- allKeys , let b = k `elem` pressed ]
 
 instance Show a => Show (XY a) where show XY{x,y} = show (x,y)
 instance Show a => Show (RGB a) where show RGB{r,g,b} = "RGB" ++ show (r,g,b)
