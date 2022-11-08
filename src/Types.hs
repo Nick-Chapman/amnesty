@@ -5,6 +5,7 @@ module Types -- TODO: rename PicTypes
   , RGB(..)
   , Key(..)
   , Keys(..)
+  , HiLo(..)
   ) where
 
 import Control.DeepSeq (NFData)
@@ -31,3 +32,5 @@ newtype Keys = Keys { pressed :: Set Key }
 
 instance Show a => Show (XY a) where show XY{x,y} = show (x,y)
 instance Show a => Show (RGB a) where show RGB{r,g,b} = "RGB" ++ show (r,g,b)
+
+data HiLo a = HiLo { hi :: a, lo :: a } deriving (Eq,Ord,Generic,NFData,Functor,Show)

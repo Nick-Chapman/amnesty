@@ -1,74 +1,114 @@
 
 module PPU (effect) where
 
-import Eff (Eff(..))
-import Types (XY(..),RGB(..))
+import Eff (Eff(..),Byte)
+import Types (XY(..),RGB(..),HiLo(..))
+--import Data.Word8 (Word8)
 
 effect :: Eff p ()
 effect = do
-  drawSquare
-  drawTile
+  drawPixels
 
-drawTile :: forall p. Eff p ()
-drawTile = do
+drawPixels :: Eff p ()
+drawPixels =
+  sequence_
+  [ do
+      x <- LitB x
+      y <- LitB y
+      doPix XY {x,y}
+      pure ()
+  | x <- [0..255]
+  , y <- [0..239]
+  ]
+
+doPix :: XY (Byte p) -> Eff p ()
+doPix xy@XY{x,y} = do
+  HiLo{hi=coarseX,lo=fineX} <- splitCourseFine x
+  HiLo{hi=coarseY,lo=fineY} <- splitCourseFine y
+  let coarse = XY {x = coarseX, y = coarseY}
+  let fine = XY {x = fineX, y = fineY}
+  pickTileForCoarse coarse >>= \case
+    Nothing -> pure ()
+    Just (pat,tile) -> do
+      plane1 <- getTilePlaneBit pat Plane1 tile fine
+      plane2 <- getTilePlaneBit pat Plane2 tile fine
+      rgb <- colourOfPlanes plane1 plane2
+      EmitPixel xy rgb
+      pure ()
+
+colourOfPlanes :: Bool -> Bool -> Eff p (RGB (Byte p))
+colourOfPlanes plane1 plane2 = do
   full <- LitB 255
   zero <- LitB 0
-  let yellow = RGB { r = full, g = full, b = zero }
+  let red = RGB { r = full, g = zero, b = zero }
+  let green = RGB { r = zero, g = full, b = zero }
+  let blue = RGB { r = zero, g = zero, b = full }
   let black = RGB { r = zero, g = zero, b = zero }
-  posX <- LitB 50
-  posY <- LitB 50
+  pure $
+    case (plane1,plane2) of
+      (True,True) -> red
+      (True,False) -> green
+      (False,True) -> blue
+      (False,False) -> black
 
-  base <- GetPPUReg1
-  let
-    testPix :: Int -> Int -> Eff p Bool -- x/y in range 0..7
-    testPix x y = do
-      offset <- LitB (fromIntegral x)
-      a <- AddB base offset
-      b <- ReadVmem a
-      TestBit b y
+data Plane = Plane1 | Plane2
+data Pat = PatL | PatR
 
-  sequence_
-    [ do
-        on <- testPix xi yi
-        xi <- LitB (fromIntegral xi)
-        yi <- LitB (fromIntegral yi)
-        x <- AddB posX xi
-        y <- AddB posY yi
+getTilePlaneBit :: Pat -> Plane -> Byte p -> XY (Byte p) -> Eff p Bool
+getTilePlaneBit pat plane tile fine = do
+  tableOffset <- LitB (case pat of PatL -> 0; PatR -> 16)
+  planeOffset <- LitB (case plane of Plane1 -> 0; Plane2 -> 8)
+  let XY {x = fineX, y = fineY} = fine
+  HiLo {hi = tileHi, lo = tileLo} <- nibbles tile
+  hi <- BwOr tileHi tableOffset
+  lo <- do
+    shifted <- tileLo `ShiftL` 4
+    n1 <- pure fineY
+    n <- BwOr n1 planeOffset
+    BwOr shifted n
+  byte <- ReadVmem HiLo { hi, lo }
+  TestBitB byte fineX
 
-        let xy = XY { x, y }
+splitCourseFine :: Byte p -> Eff p (HiLo (Byte p))
+splitCourseFine b = do
+  mask <- LitB 0x7
+  lo <- BwAnd b mask -- 0..7
+  hi <- ShiftR b 3 -- 0..31
+  pure HiLo {hi,lo}
 
-        let rgb = if on then yellow else black
-        EmitPixel xy rgb
-    | xi <- [0::Int ..7]
-    , yi <- [0::Int ..7]
-    ]
+nibbles :: Byte p -> Eff p (HiLo (Byte p))
+nibbles b = do
+  mask <- LitB 0xF
+  lo <- BwAnd b mask -- 0..15
+  hi <- ShiftR b 4 -- 0..15
+  pure HiLo {hi,lo}
 
 
-drawSquare :: Eff p ()
-drawSquare = do
-  let XY{x=sizeX,y=sizeY} = squareSize
-  posX <- GetPPUReg1
-  posY <- GetPPUReg2
+pickTileForCoarse :: XY (Byte p) -> Eff p (Maybe (Pat, Byte p))
+pickTileForCoarse coarse = do
+  -- at runtime ths would consult the nametable
+  let XY{x,y} = coarse
+  HiLo{hi=hx,lo=lx} <- nibbles x
+  HiLo{hi=hy,lo=ly} <- nibbles y
+  zero <- LitB 0
+  showLeft <- EqB hx zero
+  let pat = if showLeft then PatL else PatR
+  yon <- EqB hy zero
+  if not yon then pure Nothing else do
+    shifted <- ly `ShiftL` 4
+    tile <- BwOr shifted lx
+    pure (Just (pat,tile))
 
-  sequence_
-    [ do
-        xi <- LitB xi
-        yi <- LitB yi
-        x <- AddB posX xi
-        y <- AddB posY yi
-        pixel (x,y)
-    | xi <- [0..sizeX-1]
-    , yi <- [0..sizeY-1]
-    , (xi+yi) `mod` 2 == 0
-    ]
+{-
+_litXY :: XY Word8 -> Eff p (XY (Byte p))
+_litXY XY{x,y} = do
+  x <- LitB x
+  y <- LitB y
+  pure XY {x,y}
 
-  where
-    pixel (x,y) = do
-      let xy = XY { x, y }
-      r <- LitB 255
-      g <- LitB 255
-      b <- LitB 0
-      let rgb = RGB { r, g, b }
-      EmitPixel xy rgb
-
-    squareSize = XY { x = 10, y = 10 }
+_eqXY :: XY (Byte p) -> XY (Byte p) -> Eff p Bool
+_eqXY XY{x=x1,y=y1} XY{x=x2,y=y2} = do
+  b1 <- EqB x1 x2
+  b2 <- EqB y1 y2
+  pure (b1 && b2)
+-}

@@ -3,14 +3,15 @@ module System (top) where
 
 import Eff (Eff(..))
 import qualified PPU (effect)
-import Types (Key(..))
+--import Types (Key(..))
 
 top :: Eff p ()
 top = do
   PPU.effect
-  doKeyX
-  doKeyZ
+  --doKeyX
+  --doKeyZ
 
+{-
 doKeyX :: Eff p ()
 doKeyX = do
   b <- IsPressed KeyX
@@ -37,5 +38,5 @@ incrementReg2 = do
   v <- GetPPUReg2
   one <- LitB 1
   v' <- AddB v one
-  -- TODO: need mod by screen-height of 240
   SetPPUReg2 v'
+-}

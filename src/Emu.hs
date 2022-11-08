@@ -5,14 +5,14 @@ module Emu
   ) where
 
 import Control.DeepSeq (NFData)
-import Data.Bits (testBit)
+import Data.Bits (testBit,(.&.),(.|.),shiftR,shiftL)
 import Data.Map (Map)
-import Data.Word8 (Word8)
+import Data.Word (Word8,Word16)
 import Eff (Phase(..),Eff(..))
 import GHC.Generics (Generic)
 import NesFile (NesFile(..))
 import Rom8k (Rom8k)
-import Types (Picture(..),XY(..),RGB(..),Keys(..))
+import Types (Picture(..),XY(..),RGB(..),Keys(..),HiLo(..))
 import qualified Data.Map as Map (empty,toList,insert)
 import qualified Rom8k (read)
 
@@ -73,10 +73,23 @@ emulate e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkPicture s
         k s (readVmem context a)
       TestBit b n -> do
         k s (b `testBit` n)
+      TestBitB b n -> do
+        k s (b `testBit` fromIntegral n)
+      EqB b1 b2 -> do
+        k s (b1 == b2)
+      BwAnd b1 b2 -> do
+        k s (b1 .&. b2)
+      BwOr b1 b2 -> do
+        k s (b1 .|. b2)
+      ShiftR b n -> do
+        k s (b `shiftR` n)
+      ShiftL b n -> do
+        k s (b `shiftL` n)
 
-readVmem :: Context -> Word8 -> Word8 -- TODO: wider addresses
-readVmem Context{chr1} a = do
-  Rom8k.read chr1 (fromIntegral a)
+readVmem :: Context -> HiLo Word8 -> Word8
+readVmem Context{chr1} HiLo{hi,lo} = do
+  let a :: Word16 = (fromIntegral hi `shiftL` 8) .|. fromIntegral lo
+  Rom8k.read chr1 a
 
 mkPicture :: State -> (Picture,State)
 mkPicture state@State{emitted} = do

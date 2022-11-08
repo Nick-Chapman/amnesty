@@ -87,7 +87,7 @@ printStatLine World{frame,accNanos} = do
     elaspedSecs :: Double = fromIntegral accNanos / gig
     speedup = emulatedSecs / elaspedSecs
     line =
-      printf "%d, emu %.03f, elap %.03f, speedupX %.f"
+      printf "%d, emu %.03f, elap %.03f, speedupX %.3f"
       frame emulatedSecs elaspedSecs speedup
   putStrLn line
 
