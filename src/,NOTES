@@ -1,5 +1,5 @@
 
-6bit col from PPU; convert to RGB via fixed mapping in UsingSDL
+convert 6bit col to RGB via fixed mapping in UsingSDL
 Hash pictures (256x240 6bit cols) for regression. and logging
 
 Emu: ensure emitted pixels are in order and cover all 256x240
@@ -15,7 +15,6 @@ Run dumped nametable in amnesty, for visual comparison
 
 PPU use regs to track h/v scan counting
 Speed up! (do I need compilation already!)
-
 
 Run without SDL
 

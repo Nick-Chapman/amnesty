@@ -6,7 +6,7 @@ module Eff
 
 import Control.Monad (ap,liftM)
 import Data.Word8 (Word8)
-import Types (Key,XY,RGB,HiLo,Reg)
+import Types (Key,XY,HiLo,Reg)
 
 class ( Show (Byte p)
       ) => Phase p where
@@ -19,7 +19,7 @@ data Eff p x where
   Bind :: Eff p x -> (x -> Eff p y) -> Eff p y
 
   IsPressed :: Key -> Eff p Bool
-  EmitPixel :: XY (Byte p) -> RGB (Byte p) -> Eff p ()
+  EmitPixel :: XY (Byte p) -> Byte p -> Eff p ()
 
   ReadVmem :: HiLo (Byte p) -> Eff p (Byte p)
   SetReg :: Reg -> Byte p -> Eff p ()

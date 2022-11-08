@@ -2,7 +2,7 @@
 module PPU (effect) where
 
 import Eff (Eff(..),Byte)
-import Types (XY(..),RGB(..),HiLo(..),Reg(..))
+import Types (XY(..),HiLo(..),Reg(..))
 
 effect :: Eff p ()
 effect = do
@@ -31,24 +31,17 @@ doPix xy@XY{x,y} = do
     Just (pat,tile) -> do
       plane1 <- getTilePlaneBit pat Plane1 tile fine
       plane2 <- getTilePlaneBit pat Plane2 tile fine
-      rgb <- colourOfPlanes plane1 plane2
-      EmitPixel xy rgb
+      col <- colourOfPlanes plane1 plane2
+      EmitPixel xy col
       pure ()
 
-colourOfPlanes :: Bool -> Bool -> Eff p (RGB (Byte p))
-colourOfPlanes plane1 plane2 = do
-  full <- LitB 255
-  zero <- LitB 0
-  let red = RGB { r = full, g = zero, b = zero }
-  let green = RGB { r = zero, g = full, b = zero }
-  let blue = RGB { r = zero, g = zero, b = full }
-  let black = RGB { r = zero, g = zero, b = zero }
-  pure $
-    case (plane1,plane2) of
-      (True,True) -> red
-      (True,False) -> green
-      (False,True) -> blue
-      (False,False) -> black
+colourOfPlanes :: Bool -> Bool -> Eff p (Byte p)
+colourOfPlanes plane1 plane2 = LitB $
+  case (plane1,plane2) of
+    (True,True) -> 1
+    (True,False) -> 2
+    (False,True) -> 3
+    (False,False) -> 0
 
 data Plane = Plane1 | Plane2
 data Pat = PatL | PatR

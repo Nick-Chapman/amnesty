@@ -12,12 +12,12 @@ module Types
 import Data.Set (Set)
 import Data.Word8 (Word8)
 
-data Picture where
+data Picture where  -- TODO: move to Emu (for use in UsingSDL)
   Draw :: XY Int -> RGB Word8 -> Picture
   Pictures :: [Picture] -> Picture
 
 data XY a = XY { x :: a, y :: a } deriving (Eq,Ord,Functor)
-data RGB a = RGB { r :: a, g :: a, b :: a }
+data RGB a = RGB { r :: a, g :: a, b :: a } -- TODO: move to Emu (for use in UsingSDL)
 
 data Key
   = KeyEnter

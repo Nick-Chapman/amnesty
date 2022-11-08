@@ -50,9 +50,9 @@ emulate e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkPicture s
 
       IsPressed key -> do
         k s (key `elem` pressed)
-      EmitPixel xy rgb -> do
+      EmitPixel xy col -> do
         let State{emitted} = s
-        k s { emitted = Map.insert xy rgb emitted } ()
+        k s { emitted = Map.insert xy (col2rgb col) emitted } ()
 
       ReadVmem a -> do
         k s (readVmem context a)
@@ -63,7 +63,8 @@ emulate e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkPicture s
         let State{regs} = s
         k s { regs = Map.insert r b regs } ()
 
-      LitB n -> k s n
+      LitB n -> do
+        k s n
       TestBit b n -> do
         k s (b `testBit` n)
       TestBitB b n -> do
@@ -80,6 +81,14 @@ emulate e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkPicture s
         k s (b `shiftL` n)
       ShiftR b n -> do
         k s (b `shiftR` n)
+
+col2rgb :: Word8 -> RGB Word8
+col2rgb = \case
+  0 -> RGB { r = 0, g = 0, b = 0 }
+  1 -> RGB { r = 255, g = 0, b = 0 }
+  2 -> RGB { r = 0, g = 255, b = 0 }
+  3 -> RGB { r = 0, g = 0, b = 255 }
+  n -> error (show ("col2rgb",n))
 
 readVmem :: Context -> HiLo Word8 -> Word8
 readVmem Context{chr1} HiLo{hi,lo} = do
