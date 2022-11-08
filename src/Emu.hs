@@ -31,12 +31,14 @@ makeContext nesFile = do
 
 data State = State
   { emitted :: Map (XY Word8) (RGB Word8)
+  , countEmitted :: Int
   , regs :: Map Reg Word8
   }
 
 state0 :: State
 state0 = State
   { emitted = Map.empty
+  , countEmitted = 0
   , regs = Map.empty
   }
 
@@ -50,9 +52,19 @@ emulate e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkPicture s
 
       IsPressed key -> do
         k s (key `elem` pressed)
+
       EmitPixel xy col -> do
-        let State{emitted} = s
-        k s { emitted = Map.insert xy (col2rgb col) emitted } ()
+        let State{emitted,countEmitted=c} = s
+        let expectedXY =
+              XY { x = fromIntegral (c `mod` 256)
+                 , y = fromIntegral (c `div` 256)
+                 }
+        case xy /= expectedXY of
+          True -> error (show ("EmitPixel:c=",c,"xy=",xy,"expected=",expectedXY))
+          False ->
+            k s { emitted = Map.insert xy (col2rgb col) emitted
+                , countEmitted = 1 + c
+                } ()
 
       ReadVmem a -> do
         k s (readVmem context a)
@@ -96,8 +108,12 @@ readVmem Context{chr1} HiLo{hi,lo} = do
   Rom8k.read chr1 a
 
 mkPicture :: State -> (Picture,State)
-mkPicture state@State{emitted} = do
-  (picture, state { emitted = Map.empty })
+mkPicture state@State{emitted,countEmitted=c} = do
+  let expected = 256*240
+  if c /= expected
+    then error (show ("mkPicture,c=",c,"expected=",expected))
+    else do
+    (picture, state { emitted = Map.empty, countEmitted = 0 })
   where
     picture = Pictures
       [ Draw (fmap fromIntegral xy) rgb

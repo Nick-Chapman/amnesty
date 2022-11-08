@@ -16,8 +16,8 @@ drawPixels =
       y <- LitB y
       doPix XY {x,y}
       pure ()
-  | x <- [0..255]
-  , y <- [0..239]
+  | y <- [0..239]
+  , x <- [0..255]
   ]
 
 doPix :: XY (Byte p) -> Eff p ()
@@ -27,13 +27,14 @@ doPix xy@XY{x,y} = do
   let coarse = XY {x = coarseX, y = coarseY}
   let fine = XY {x = fineX, y = fineY}
   pickTileForCoarse coarse >>= \case
-    Nothing -> pure ()
+    Nothing -> do
+      zero <- LitB 0 -- black
+      EmitPixel xy zero
     Just (pat,tile) -> do
       plane1 <- getTilePlaneBit pat Plane1 tile fine
       plane2 <- getTilePlaneBit pat Plane2 tile fine
       col <- colourOfPlanes plane1 plane2
       EmitPixel xy col
-      pure ()
 
 colourOfPlanes :: Bool -> Bool -> Eff p (Byte p)
 colourOfPlanes plane1 plane2 = LitB $
@@ -89,7 +90,7 @@ pickTileForCoarse coarse = do
     reg1 <- GetReg Reg1
     TestBit reg1 0
 
-  let pat = if (showLeft == swapLR) then PatL else PatR
+  let pat = if (showLeft /= swapLR) then PatL else PatR
 
   yon <- EqB hy zero
   if not yon then pure Nothing else do
