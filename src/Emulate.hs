@@ -1,5 +1,5 @@
 
-module Emu (emulate) where
+module Emulate (emulate) where
 
 import Behaviour (Behaviour(..),Report(..))
 import Col6 (Col6,makeCol6)
