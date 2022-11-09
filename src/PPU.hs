@@ -24,7 +24,7 @@ doPix mode xy@XY{x,y} = do
   HiLo{hi=coarseY,lo=fineY} <- splitCourseFine y
   let coarse = XY {x = coarseX, y = coarseY}
   let fine = XY {x = fineX, y = fineY}
-  zero <- LitB 0 -- black
+  zero <- LitB 0 -- light grey
   pickTileForCoarse mode coarse >>= \case
     Nothing -> do
       EmitPixel xy zero
@@ -38,10 +38,10 @@ doPix mode xy@XY{x,y} = do
 colourOfPlanes :: Bool -> Bool -> Eff p (Byte p)
 colourOfPlanes plane1 plane2 = LitB $
   case (plane1,plane2) of
-    (True,True) -> 1
-    (True,False) -> 2
-    (False,True) -> 3
-    (False,False) -> 0
+    (True,True) -> 6 -- red
+    (True,False) -> 44 -- cyan
+    (False,True) -> 1 -- blue
+    (False,False) -> 63 -- black
 
 data Plane = Plane1 | Plane2
 data Pat = PatL | PatR
