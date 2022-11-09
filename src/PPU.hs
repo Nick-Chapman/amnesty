@@ -28,9 +28,7 @@ doPix mode xy@XY{x,y} = do
   pickTileForCoarse mode coarse >>= \case
     Nothing -> do
       EmitPixel xy zero
-    Just (PatR,_) -> do
-      EmitPixel xy zero -- ignore PatR
-
+    --Just (PatR,_) -> do EmitPixel xy zero -- ignore PatR
     Just (pat,tile) -> do
       plane1 <- getTilePlaneBit pat Plane1 tile fine
       plane2 <- getTilePlaneBit pat Plane2 tile fine

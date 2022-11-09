@@ -18,6 +18,7 @@ import qualified Data.Text as Text (pack)
 import qualified Emu as Emu (Context,State,state0,emulate,Result(..))
 import qualified SDL
 import qualified System (top)
+import qualified Frame (toPicture,toFrameHash)
 
 data ScreenSpec = ScreenSpec
   { sf ::Int
@@ -27,7 +28,7 @@ data ScreenSpec = ScreenSpec
 data World = World
   { state :: Emu.State
   , keys :: Keys
-  , frame :: Int
+  , frameCount :: Int
   , accNanos :: Int64
   }
 
@@ -48,10 +49,10 @@ main context = do
   let assets = DrawAssets { renderer, ss, offset = border, accpix }
   let keys = Keys { pressed = Set.empty }
   let state0 = Emu.state0
-  let world0 = World { state = state0, keys, frame = 0, accNanos = 0 }
+  let world0 = World { state = state0, keys, frameCount = 0, accNanos = 0 }
   let
     loop :: World -> IO ()
-    loop World{state,keys,frame,accNanos} = do
+    loop World{state,keys,frameCount,accNanos} = do
 
       events <- SDL.pollEvents
       let interesting = [ i | e <- events, i <- interestingOf e ]
@@ -61,10 +62,11 @@ main context = do
       --(x,xNanos) <- measureNanos $ do pure (Emu.emulate the_effect context keys state)
       let res = Emu.emulate the_effect context keys state
       let xNanos = 0
-      let Emu.Result{picture,state} = res
+      let Emu.Result{frame,state} = res
+      let picture = Frame.toPicture frame
       drawEverything assets picture
 
-      let world = World { state, keys, frame = frame+1, accNanos = accNanos + xNanos }
+      let world = World { state, keys, frameCount = frameCount+1, accNanos = accNanos + xNanos }
       printStatLine world res
 
       threadDelay (1000000 `div` 60) -- 1/60 sec
@@ -79,12 +81,11 @@ main context = do
   SDL.quit
 
 printStatLine :: World -> Emu.Result -> IO ()
-printStatLine World{frame,keys} Emu.Result{frameHash,regs
-                                          ,vmemReadCount=vr,vramWriteCount=vw
-                                          } = do
+printStatLine World{frameCount,keys}
+  Emu.Result{frame,regs,vmemReadCount=vr,vramWriteCount=vw} = do
   printf "%03d %s %s #vw=%d, #vr=%d regs=%s\n"
-    frame (show keys) (show frameHash) vw vr (show (Map.toList regs))
-
+    frameCount (show keys) (show frameHash) vw vr (show (Map.toList regs))
+    where frameHash = Frame.toFrameHash frame
 {-printStatLine :: World -> Emu.FrameHash -> IO ()
 printStatLine World{frame,accNanos} frameHash = do
   let

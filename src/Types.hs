@@ -16,7 +16,7 @@ data Picture where  -- TODO: move to Emu (for use in UsingSDL)
   Draw :: XY Int -> RGB Word8 -> Picture
   Pictures :: [Picture] -> Picture
 
-data XY a = XY { x :: a, y :: a } deriving (Eq,Ord,Functor)
+data XY a = XY { y :: a, x :: a } deriving (Eq,Ord,Functor) -- sort: y,x
 data RGB a = RGB { r :: a, g :: a, b :: a } -- TODO: move to Emu (for use in UsingSDL)
 
 data Key
