@@ -1,14 +1,14 @@
 
-module Col6 (Col6,makeCol6,col2rgb,toWord) where
+module Col6 (Col6,makeCol6,col2rgb) where
 
+import Data.Hashable (Hashable)
 import Data.Word (Word8)
+import GHC.Generics (Generic)
 import Text.Printf (printf)
 import Types (RGB(..))
 
 newtype Col6 = Col6 Word8
-
-toWord :: Col6 -> Word8 -- for hashing. TODO: prefer Hashable
-toWord (Col6 w) = w
+  deriving (Generic,Hashable)
 
 makeCol6 :: Word8 -> Col6
 makeCol6 w = if w >= 64 then error $ printf "makeCol6: %d" w else Col6 w

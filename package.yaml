@@ -31,7 +31,6 @@ dependencies:
 
 default-extensions:
 - BangPatterns
-- DeriveAnyClass
 - DeriveFunctor
 - DeriveGeneric
 - DuplicateRecordFields
