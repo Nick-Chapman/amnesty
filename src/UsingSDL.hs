@@ -1,5 +1,5 @@
 
-module UsingSDL (main) where
+module UsingSDL (main,nopic1) where
 
 import Control.Concurrent (threadDelay)
 import Control.Monad (when)
@@ -19,6 +19,17 @@ import qualified Emu as Emu (Context,State,state0,emulate,Result(..))
 import qualified SDL
 import qualified System (top)
 import qualified Frame (toPicture,toFrameHash)
+
+nopic1 :: Emu.Context -> IO ()
+nopic1 context = do
+  let the_effect = System.top
+  let keys = Keys { pressed = Set.empty }
+  let state = Emu.state0
+  let res = Emu.emulate the_effect context keys state
+  let Emu.Result{frame} = res
+  let frameCount = 1::Int
+  printf "%03d %s\n" frameCount (show $ Frame.toFrameHash frame)
+  pure ()
 
 data ScreenSpec = ScreenSpec
   { sf ::Int
