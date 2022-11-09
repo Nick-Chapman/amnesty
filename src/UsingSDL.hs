@@ -31,17 +31,24 @@ nopic doReport maxM context = do
   let the_effect = System.top
   let keys0 = Keys { pressed = Set.empty }
   let
-    loop :: Int -> Behaviour -> IO ()
-    loop n = \case
+    loop :: TimeSpec -> Int -> Behaviour -> IO ()
+    loop time0 n = \case
       Log{} -> undefined -- TODO
-      Poll f -> loop n (f keys0)
+      Poll f -> loop time0 n (f keys0)
       Render frame report behaviour -> do
-        let Report{vmemReadCount=vr,vramWriteCount=vw} = report
-        let r = if doReport then printf " #vw=%d, #vr=%d" vw vr else ""
-        printf "%03d %s%s\n" n (show $ Frame.toFrameHash frame) r
-        if stop n then pure () else
-          loop (n+1) behaviour
-  loop 1 $ emulate context the_effect
+        let h = Frame.toFrameHash frame
+        if h /= h then error "" else do -- hack, forcing!
+          time <- getTime Monotonic
+          let Report{vmemReadCount=vr,vramWriteCount=vw} = report
+          printf "%03d %s%s\n"
+            n (show $ Frame.toFrameHash frame)
+            (if doReport then printf " %s #vw=%d, #vr=%d"
+              (seeTimeSpec (time-time0)) vw vr else "")
+          if stop n then pure () else
+            loop time (n+1) behaviour
+
+  time0 <- getTime Monotonic
+  loop time0 1 $ emulate context the_effect
 
 
 data ScreenSpec = ScreenSpec
@@ -71,11 +78,12 @@ main nesfile = do
   renderer <- SDL.createRenderer win (-1) SDL.defaultRenderer
   let assets = DrawAssets { renderer, ss, offset = border, accpix }
   let keys0 = Keys { pressed = Set.empty }
-  let world0 = World { keys = keys0, frameCount = 0, accNanos = 0 }
+  let world0 = World { keys = keys0, frameCount = 1, accNanos = 0 }
   let behaviour0 = emulate nesfile the_effect
+
   let
-    loop :: World -> Behaviour -> IO ()
-    loop world = \case
+    loop :: TimeSpec -> World -> Behaviour -> IO ()
+    loop time world = \case
       Log{} -> undefined -- TODO
 
       Poll f -> do
@@ -83,51 +91,42 @@ main nesfile = do
         let interesting = [ i | e <- events, i <- interestingOf e ]
         if Quit `elem` interesting then pure () else do --quit
           keys <- pure $ foldl insertInteresting (keys world) interesting
-          loop world { keys } (f keys)
+          loop time world { keys } (f keys)
 
       Render frame report behaviour  -> do
-        printStatLine world frame report
-        drawEverything assets (Frame.toPicture frame)
-        threadDelay (1000000 `div` 60) -- 1/60 sec
-        loop world behaviour
+        let h = Frame.toFrameHash frame
+        if h /= h then error "" else do -- hack, forcing!
+          t1 <- getTime Monotonic
+          drawEverything assets (Frame.toPicture frame)
+          t2 <- getTime Monotonic
+          printStatLine world frame (t1-time) (t2-t1) report
+          let _ = threadDelay (1000000 `div` 60) -- 1/60 sec
+          loop t2 world { frameCount = frameCount world + 1 } behaviour
 
   setColor renderer darkGrey
   SDL.clear renderer
-  loop world0 behaviour0
+
+  time0 <- getTime Monotonic
+  loop time0 world0 behaviour0
+
   SDL.destroyRenderer renderer
   SDL.destroyWindow win
   SDL.quit
 
-printStatLine :: World -> Frame -> Report -> IO ()
-printStatLine World{frameCount,keys} frame
+
+printStatLine :: World -> Frame -> TimeSpec -> TimeSpec -> Report -> IO ()
+printStatLine World{frameCount,keys} frame t1 t2
   Report{regs,vmemReadCount=vr,vramWriteCount=vw} = do
-  printf "%03d %s %s #vw=%d, #vr=%d regs=%s\n"
-    frameCount (show keys) (show frameHash) vw vr (show (Map.toList regs))
-    where frameHash = Frame.toFrameHash frame
+  printf "%03d %s %s %s %s #vw=%d, #vr=%d regs=%s\n"
+    frameCount (show keys) (show $ Frame.toFrameHash frame)
+    (seeTimeSpec t1) (seeTimeSpec t2)
+    vw vr (show (Map.toList regs))
 
+seeTimeSpec :: TimeSpec -> String
+seeTimeSpec TimeSpec{sec,nsec} = do
+  printf "%d.%03d" sec (nsec `div` million) :: String
+  where million = 1_000_000
 
-{-printStatLine :: World -> Emu.FrameHash -> IO ()
-printStatLine World{frame,accNanos} frameHash = do
-  let
-    emuSecsPerFrame = 1.0 / 60.0
-    gig :: Double = 1_000_000_000
-    emulatedSecs :: Double = fromIntegral frame * emuSecsPerFrame
-    elaspedSecs :: Double = fromIntegral accNanos / gig
-    speedup = emulatedSecs / elaspedSecs
-    line =
-      printf "%d, emu %.03f, elap %.03f, speedupX %.3f, hash=%s"
-      frame emulatedSecs elaspedSecs speedup (show frameHash)
-  putStrLn line-}
-
-_measureNanos :: IO a -> IO (a, Int64) -- TODO: reinstate
-_measureNanos io = do
-  before <- getTime Monotonic
-  a <- io
-  after <- getTime Monotonic
-  let TimeSpec{sec,nsec} = after - before
-  let nanos = gig * sec + nsec
-  return (a,nanos)
-  where gig = 1_000_000_000
 
 data InterestingEvent = Press Key | Release Key | Quit deriving Eq
 

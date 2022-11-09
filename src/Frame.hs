@@ -35,7 +35,7 @@ toPicture Frame{m} = do
 toFrameHash :: Frame -> FrameHash
 toFrameHash Frame {fh} = fh
 
-data FrameHash = FrameHash Int
+data FrameHash = FrameHash Int deriving Eq
 
 makeFrameHash :: [Col6] -> FrameHash
 makeFrameHash cols = FrameHash (hash cols)
