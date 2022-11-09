@@ -1,7 +1,6 @@
 
 module UsingSDL (main,nopic) where
 
---import System.Clock (TimeSpec(..),Clock(Monotonic),getTime) -- TODO: reinstate?
 import Behaviour (Behaviour(..),Report(..))
 import Control.Concurrent (threadDelay)
 import Control.Monad (when)
@@ -14,6 +13,7 @@ import Frame (Frame)
 import GHC.Int (Int64)
 import NesFile (NesFile)
 import SDL (Renderer,Rectangle(..),V2(..),V4(..),Point(P),($=))
+import System.Clock (TimeSpec(..),Clock(Monotonic),getTime)
 import Text.Printf (printf)
 import Types (Picture(..),XY(..),RGB(..),Key(..),Keys(..))
 import qualified Data.Map.Strict as Map (lookup,fromList,toList)
@@ -119,15 +119,15 @@ printStatLine World{frame,accNanos} frameHash = do
       frame emulatedSecs elaspedSecs speedup (show frameHash)
   putStrLn line-}
 
-{-measureNanos :: IO a -> IO (a, Int64) -- TODO: reinstate
-measureNanos io = do
+_measureNanos :: IO a -> IO (a, Int64) -- TODO: reinstate
+_measureNanos io = do
   before <- getTime Monotonic
   a <- io
   after <- getTime Monotonic
   let TimeSpec{sec,nsec} = after - before
   let nanos = gig * sec + nsec
   return (a,nanos)
-  where gig = 1_000_000_000-}
+  where gig = 1_000_000_000
 
 data InterestingEvent = Press Key | Release Key | Quit deriving Eq
 
