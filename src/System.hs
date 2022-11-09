@@ -1,15 +1,44 @@
 
 module System (top) where
 
-import Eff (Eff(..))
-import Types (Key(..),Reg(..))
-import qualified PPU (effect)
+import Data.Bits ((.&.),(.|.),shiftL,shiftR)
+import Data.Word (Word16)
+import Eff (Eff(..),Byte)
+import Types (Key(..),Reg(..),HiLo(..))
+import qualified PPU (effect,Mode(..))
 
 top :: Eff p ()
 top = do
-  doKeyX
-  doKeyZ
-  PPU.effect
+  doKeyX -- Reg1
+  doKeyZ -- Reg2
+  setupNameTable
+  mode <- selectMode
+  PPU.effect mode
+
+setupNameTable :: Eff p () -- to show PatL
+setupNameTable =
+  sequence_
+  [ do
+      a <- litHL (0x2000 + n)
+      b <- LitB tile
+      WriteVmem a b
+  | lo <- [0..15]
+  , hi <- [0..15]
+  , let tile = hi `shiftL` 4 .|. lo
+  , let n = fromIntegral hi `shiftL` 5 .|. fromIntegral lo
+  ]
+
+litHL :: Word16 -> Eff p (HiLo (Byte p))
+litHL w16 = do
+  hi <- LitB (fromIntegral (w16 `shiftR` 8))
+  lo <- LitB (fromIntegral (w16 .&. 255))
+  pure HiLo {hi,lo}
+
+selectMode :: Eff p PPU.Mode
+selectMode = do
+  byte <- GetReg Reg2
+  bit <- TestBit byte 0
+  pure (if bit == False then PPU.Mode_Tiles else PPU.Mode_NameTable)
 
 doKeyX :: Eff p ()
 doKeyX = do
@@ -29,4 +58,3 @@ incrementR reg = do
   one <- LitB 1
   v' <- AddB v one
   SetReg reg v'
-

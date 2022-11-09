@@ -79,9 +79,11 @@ main context = do
   SDL.quit
 
 printStatLine :: World -> Emu.Result -> IO ()
-printStatLine World{frame,keys} Emu.Result{frameHash,regs,vmemReadCount=v} = do
-  printf "%03d %s %s #v=%d regs=%s\n"
-    frame (show keys) (show frameHash) v (show (Map.toList regs))
+printStatLine World{frame,keys} Emu.Result{frameHash,regs
+                                          ,vmemReadCount=vr,vramWriteCount=vw
+                                          } = do
+  printf "%03d %s %s #vw=%d, #vr=%d regs=%s\n"
+    frame (show keys) (show frameHash) vw vr (show (Map.toList regs))
 
 {-printStatLine :: World -> Emu.FrameHash -> IO ()
 printStatLine World{frame,accNanos} frameHash = do

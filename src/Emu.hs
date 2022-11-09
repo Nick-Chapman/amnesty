@@ -38,6 +38,7 @@ data Result = Result
   , frameHash :: FrameHash
   , regs :: Map Reg Word8
   , vmemReadCount :: Int
+  , vramWriteCount :: Int
   }
 
 data State = State
@@ -46,6 +47,8 @@ data State = State
   , emittedAcc :: [Word8] -- TODO: type Col to assert the 6bit restriction
   , regs :: Map Reg Word8
   , vmemReadCount :: Int
+  , vramWriteCount :: Int
+  , vram :: Map Word16 Word8 -- for nametable
   }
 
 state0 :: State
@@ -55,13 +58,15 @@ state0 = State
   , emittedAcc = []
   , regs = Map.empty
   , vmemReadCount = 0
+  , vramWriteCount = 0
+  , vram = Map.empty
   }
 
 emulate :: Effect () -> Context -> Keys -> State -> Result
 emulate e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkPicture s
   where
     loop :: State -> Effect b -> (State -> b -> r) -> r
-    loop s@State{vmemReadCount} e k = case e of
+    loop s@State{vmemReadCount,vramWriteCount} e k = case e of
       Ret x -> k s x
       Bind e f -> loop s e $ \s a -> loop s (f a) k
 
@@ -72,7 +77,14 @@ emulate e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkPicture s
         k (emitPixel xy col s) ()
 
       ReadVmem a -> do
-        k s { vmemReadCount = 1 + vmemReadCount } (readVmem context a)
+        k s { vmemReadCount = 1 + vmemReadCount } (readVmem context s a)
+
+      WriteVmem HiLo{hi,lo} b -> do
+        let State{vram} = s
+        let a :: Word16 = (fromIntegral hi `shiftL` 8) .|. fromIntegral lo
+        k s { vramWriteCount = vramWriteCount + 1
+            , vram = Map.insert a b vram
+            } ()
 
       GetReg r -> do
         let State{regs} = s
@@ -108,10 +120,13 @@ col2rgb = \case
   3 -> RGB { r = 0, g = 0, b = 255 }
   n -> error (show ("col2rgb",n))
 
-readVmem :: Context -> HiLo Word8 -> Word8
-readVmem Context{chr1} HiLo{hi,lo} = do
+readVmem :: Context -> State -> HiLo Word8 -> Word8
+readVmem Context{chr1} State{vram} HiLo{hi,lo} = do
   let a :: Word16 = (fromIntegral hi `shiftL` 8) .|. fromIntegral lo
-  Rom8k.read chr1 a
+  if
+    | a < 0x2000 -> Rom8k.read chr1 a
+    | a < 0x3000 -> maybe 0 id $ Map.lookup a vram
+    | True -> error $ printf "readVmem: %x" a
 
 emitPixel :: XY Word8 -> Word8 -> State -> State
 emitPixel xy col s = do
@@ -129,7 +144,8 @@ emitPixel xy col s = do
         }
 
 mkPicture :: State -> Result
-mkPicture state0@State{emitted,emittedAcc,countEmitted=c,regs,vmemReadCount} = do
+mkPicture state0@State{emitted,emittedAcc,countEmitted=c,regs
+                      ,vmemReadCount,vramWriteCount} = do
   let expected = 256*240
   let n = length emittedAcc
   if (c /= expected) || (n /= expected)
@@ -141,13 +157,16 @@ mkPicture state0@State{emitted,emittedAcc,countEmitted=c,regs,vmemReadCount} = d
         , countEmitted = 0
         , emittedAcc = []
         , vmemReadCount = 0
+        , vramWriteCount = 0
         }
       picture = Pictures
         [ Draw (fmap fromIntegral xy) rgb
         | (xy,rgb) <- Map.toList emitted
         ]
       frameHash = makeFrameHash (reverse emittedAcc)
-    Result { state, picture, frameHash, regs, vmemReadCount }
+    Result { state, picture, frameHash, regs
+           , vmemReadCount, vramWriteCount
+           }
 
 data FrameHash = FrameHash Int
 

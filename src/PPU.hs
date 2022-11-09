@@ -1,35 +1,36 @@
 
-module PPU (effect) where
+module PPU (effect,Mode(..)) where
 
 import Eff (Eff(..),Byte)
 import Types (XY(..),HiLo(..),Reg(..))
 
-effect :: Eff p ()
-effect = do
-  drawPixels
+data Mode = Mode_Tiles | Mode_NameTable
 
-drawPixels :: Eff p ()
-drawPixels =
+effect :: Mode -> Eff p ()
+effect mode =
   sequence_
   [ do
       x <- LitB x
       y <- LitB y
-      doPix XY {x,y}
+      doPix mode XY {x,y}
       pure ()
   | y <- [0..239]
   , x <- [0..255]
   ]
 
-doPix :: XY (Byte p) -> Eff p ()
-doPix xy@XY{x,y} = do
+doPix :: Mode -> XY (Byte p) -> Eff p ()
+doPix mode xy@XY{x,y} = do
   HiLo{hi=coarseX,lo=fineX} <- splitCourseFine x
   HiLo{hi=coarseY,lo=fineY} <- splitCourseFine y
   let coarse = XY {x = coarseX, y = coarseY}
   let fine = XY {x = fineX, y = fineY}
-  pickTileForCoarse coarse >>= \case
+  zero <- LitB 0 -- black
+  pickTileForCoarse mode coarse >>= \case
     Nothing -> do
-      zero <- LitB 0 -- black
       EmitPixel xy zero
+    Just (PatR,_) -> do
+      EmitPixel xy zero -- ignore PatR
+
     Just (pat,tile) -> do
       plane1 <- getTilePlaneBit pat Plane1 tile fine
       plane2 <- getTilePlaneBit pat Plane2 tile fine
@@ -77,8 +78,28 @@ nibbles b = do
   pure HiLo {hi,lo}
 
 
-pickTileForCoarse :: XY (Byte p) -> Eff p (Maybe (Pat, Byte p))
-pickTileForCoarse coarse = do
+pickTileForCoarse :: Mode -> XY (Byte p) -> Eff p (Maybe (Pat, Byte p))
+pickTileForCoarse = \case
+  Mode_Tiles -> pickShowPatTables
+  Mode_NameTable -> pickViaNameTable
+
+
+pickViaNameTable :: XY (Byte p) -> Eff p (Maybe (Pat, Byte p))
+pickViaNameTable coarse = do
+  ntHiBase <- LitB 0x20 -- 0x24,0x28,0x2C
+  let XY{x,y} = coarse -- both x/y are max 5 bits
+  mask <- LitB 7
+  yLo3 <- y `BwAnd` mask
+  yLo3shifted <- yLo3 `ShiftL` 5
+  yHi2 <- y `ShiftR` 3
+  hi <- BwOr yHi2 ntHiBase
+  lo <- BwOr x yLo3shifted
+  tile <- ReadVmem HiLo { hi, lo }
+  pure (Just (PatL,tile))
+
+
+pickShowPatTables :: XY (Byte p) -> Eff p (Maybe (Pat, Byte p))
+pickShowPatTables coarse = do
   -- at runtime ths would consult the nametable
   let XY{x,y} = coarse
   HiLo{hi=hx,lo=lx} <- nibbles x

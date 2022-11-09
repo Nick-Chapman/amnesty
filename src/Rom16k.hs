@@ -8,6 +8,7 @@ module Rom16k
 import Prelude hiding (init,read)
 import Data.Array (Array,(!),listArray)
 import Data.Word (Word8,Word16)
+import Text.Printf (printf)
 
 data Rom16k = Rom16k { arr :: Array Word16 Word8 }
 
@@ -21,7 +22,7 @@ init bytes = if
 read :: Rom16k -> Word16 -> Word8
 read Rom16k{arr} n = if
   | inRange n -> arr ! n
-  | otherwise -> error $ "Rom16k.read: " <> show n
+  | otherwise -> error $ printf "Rom16k.read: %x" n
 
 inRange :: Word16 -> Bool
 inRange n = n >= 0 && n < size

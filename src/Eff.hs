@@ -5,7 +5,7 @@ module Eff
   ) where
 
 import Control.Monad (ap,liftM)
-import Data.Word8 (Word8)
+import Data.Word (Word8)
 import Types (Key,XY,HiLo,Reg)
 
 class ( Show (Byte p)
@@ -21,6 +21,7 @@ data Eff p x where
   IsPressed :: Key -> Eff p Bool
   EmitPixel :: XY (Byte p) -> Byte p -> Eff p ()
 
+  WriteVmem :: HiLo (Byte p) -> Byte p -> Eff p ()
   ReadVmem :: HiLo (Byte p) -> Eff p (Byte p)
   SetReg :: Reg -> Byte p -> Eff p ()
   GetReg :: Reg -> Eff p (Byte p)
