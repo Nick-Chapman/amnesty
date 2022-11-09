@@ -79,6 +79,10 @@ emulateOLD e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkResult s
       Bind e f -> loop s e $ \s a -> loop s (f a) k
       If b -> k s b
 
+      Repeat n eff -> do
+        -- TODO: avoid this list comprehension with an inner loop
+        loop s (sequence_ [ eff | _ <- [0::Int .. n-1] ]) k
+
       IsPressed key -> do
         k s (key `elem` pressed)
 

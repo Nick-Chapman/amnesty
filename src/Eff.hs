@@ -18,6 +18,7 @@ data Eff p x where
   Ret :: x -> Eff p x
   Bind :: Eff p x -> (x -> Eff p y) -> Eff p y
   If :: Bit p -> Eff p Bool
+  Repeat :: Int -> Eff p () -> Eff p ()
 
   IsPressed :: Key -> Eff p Bool
   EmitPixel :: XY (Byte p) -> Byte p -> Eff p ()

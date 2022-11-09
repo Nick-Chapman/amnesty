@@ -9,19 +9,12 @@ data Mode = Mode_CHR | Mode_NameTable
 effect :: Mode -> Eff p ()
 effect mode = do
   LitB 0 >>= SetReg RegScanY
-  sequence_
-    [ do
-        y <- getAndInc RegScanY
-        -- no need to zero X as it initializes to 0, and wraps to 0
-        sequence_
-          [ do
-              x <- getAndInc RegScanX
-              doPix mode XY {x,y}
-              pure ()
-          | _ <- [0::Int ..255]
-          ]
-    | _ <- [0::Int ..239]
-    ]
+  Repeat 240 $ do
+    y <- getAndInc RegScanY
+    -- no need to zero X as it initializes to 0, and wraps to 0
+    Repeat 256 $ do
+      x <- getAndInc RegScanX
+      doPix mode XY {x,y}
 
 getAndInc :: Reg -> Eff p (Byte p)
 getAndInc r = do

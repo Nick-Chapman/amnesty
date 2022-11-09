@@ -1,11 +1,8 @@
 
-Reinstate speed measuring (with/out SDL)
-
 Dump nametable for game-attract screen and level 1 from honesty
 Run dumped nametable in amnesty, for visual comparison
 PPU generate picture using pallet info in nametable(attribute part)
 
-PPU use regs to track h/v scan counting
 Speed up! (do I need compilation already!)
 
 Use regs to store key-last-state and so detect edges.
