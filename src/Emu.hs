@@ -1,8 +1,5 @@
 
-module Emu
-  ( Context, makeContext -- TODO: just take NesFile
-  , emulate
-  ) where
+module Emu (emulate) where
 
 import Behaviour (Behaviour(..),Report(..))
 import Col6 (Col6,makeCol6)
@@ -18,9 +15,10 @@ import Types (XY(..),Keys(..),HiLo(..),Reg)
 import qualified Data.Map as Map (empty,insert,lookup)
 import qualified Rom8k (read)
 
-emulate :: Context -> Effect () -> Behaviour -- TODO: take NesFile not Context
-emulate context effect = loop state0
+emulate :: NesFile -> Effect () -> Behaviour
+emulate nesfile effect = loop state0
   where
+    context = makeContext nesfile
     loop :: State -> Behaviour
     loop state0 = do
       Poll $ \keys -> do

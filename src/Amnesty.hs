@@ -2,7 +2,6 @@
 module Amnesty (main) where
 
 import System.Environment (getArgs)
-import qualified Emu (makeContext)
 import qualified NesFile (load)
 import qualified UsingSDL (nopic1,main)
 
@@ -39,8 +38,7 @@ run :: Config -> IO ()
 run Config{path,pic} = do
   nesFile <- NesFile.load path
   let _ = print nesFile
-  let context = Emu.makeContext nesFile
   if
-    | not pic -> UsingSDL.nopic1 context
-    | otherwise -> UsingSDL.main context
+    | not pic -> UsingSDL.nopic1 nesFile
+    | otherwise -> UsingSDL.main nesFile
   pure ()

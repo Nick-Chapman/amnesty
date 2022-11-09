@@ -1,28 +1,29 @@
 
 module UsingSDL (main,nopic1) where
 
+--import System.Clock (TimeSpec(..),Clock(Monotonic),getTime) -- TODO: reinstate?
 import Behaviour (Behaviour(..),Report(..))
 import Control.Concurrent (threadDelay)
 import Control.Monad (when)
 import Data.List.Extra (groupSort)
 import Data.Map (Map)
 import Data.Word8 (Word8)
+import Emu (emulate)
 import Foreign.C.Types (CInt)
 import Frame (Frame)
 import GHC.Int (Int64)
+import NesFile (NesFile)
 import SDL (Renderer,Rectangle(..),V2(..),V4(..),Point(P),($=))
 import Text.Printf (printf)
 import Types (Picture(..),XY(..),RGB(..),Key(..),Keys(..))
 import qualified Data.Map.Strict as Map (lookup,fromList,toList)
 import qualified Data.Set as Set (empty,insert,delete)
 import qualified Data.Text as Text (pack)
-import qualified Emu as Emu (Context,emulate)
 import qualified Frame (toPicture,toFrameHash)
 import qualified SDL
 import qualified System (top)
---import System.Clock (TimeSpec(..),Clock(Monotonic),getTime) -- TODO: reinstate?
 
-nopic1 :: Emu.Context -> IO ()
+nopic1 :: NesFile -> IO ()
 nopic1 context = do
   let the_effect = System.top
   let keys0 = Keys { pressed = Set.empty }
@@ -33,7 +34,7 @@ nopic1 context = do
       Poll f -> loop (f keys0)
       Render frame _ _ -> do
         printf "%03d %s\n" (1::Int) (show $ Frame.toFrameHash frame)
-  loop $ Emu.emulate context the_effect
+  loop $ emulate context the_effect
 
 
 data ScreenSpec = ScreenSpec
@@ -47,8 +48,8 @@ data World = World
   , accNanos :: Int64
   }
 
-main :: Emu.Context -> IO ()
-main context = do
+main :: NesFile -> IO ()
+main nesfile = do
   let the_effect = System.top
   let accpix = False
   let ss = ScreenSpec {sf = 2,size = XY { x = 256, y = 240 } }
@@ -64,7 +65,7 @@ main context = do
   let assets = DrawAssets { renderer, ss, offset = border, accpix }
   let keys0 = Keys { pressed = Set.empty }
   let world0 = World { keys = keys0, frameCount = 0, accNanos = 0 }
-  let behaviour0 = Emu.emulate context the_effect
+  let behaviour0 = emulate nesfile the_effect
   let
     loop :: World -> Behaviour -> IO ()
     loop world = \case
