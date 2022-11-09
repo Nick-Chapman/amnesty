@@ -27,7 +27,7 @@ patSize = 0x1000 --2k (One PAT of 256 tiles)
 chrSize :: Int
 chrSize = 2 * patSize --4k
 
-data NesFile = NesFile -- TODO: move elsewhere?
+data NesFile = NesFile
   { path :: FilePath
   , header :: [Word8]
   , prgs :: [Rom16k]

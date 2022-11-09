@@ -23,7 +23,7 @@ makeFrame m =
   where
     size = length xs
     expected = 256*240
-    xs = map snd (sortOn fst (Map.toList m)) -- TODO: just hash the map!
+    xs = map snd (sortOn fst (Map.toList m))
 
 toPicture :: Frame -> Picture
 toPicture Frame{m} = do
