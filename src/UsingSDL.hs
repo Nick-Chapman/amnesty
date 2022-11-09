@@ -1,5 +1,5 @@
 
-module UsingSDL (main,nopic1) where
+module UsingSDL (main,nopic) where
 
 --import System.Clock (TimeSpec(..),Clock(Monotonic),getTime) -- TODO: reinstate?
 import Behaviour (Behaviour(..),Report(..))
@@ -23,18 +23,25 @@ import qualified Frame (toPicture,toFrameHash)
 import qualified SDL
 import qualified System (top)
 
-nopic1 :: NesFile -> IO ()
-nopic1 context = do
+nopic :: Bool -> Maybe Int -> NesFile -> IO ()
+nopic doReport maxM context = do
+  let stop = case maxM of
+        Nothing -> \_ -> False
+        Just max -> \n -> n==max
   let the_effect = System.top
   let keys0 = Keys { pressed = Set.empty }
   let
-    loop :: Behaviour -> IO ()
-    loop = \case
+    loop :: Int -> Behaviour -> IO ()
+    loop n = \case
       Log{} -> undefined -- TODO
-      Poll f -> loop (f keys0)
-      Render frame _ _ -> do
-        printf "%03d %s\n" (1::Int) (show $ Frame.toFrameHash frame)
-  loop $ emulate context the_effect
+      Poll f -> loop n (f keys0)
+      Render frame report behaviour -> do
+        let Report{vmemReadCount=vr,vramWriteCount=vw} = report
+        let r = if doReport then printf " #vw=%d, #vr=%d" vw vr else ""
+        printf "%03d %s%s\n" n (show $ Frame.toFrameHash frame) r
+        if stop n then pure () else
+          loop (n+1) behaviour
+  loop 1 $ emulate context the_effect
 
 
 data ScreenSpec = ScreenSpec

@@ -1,5 +1,5 @@
 
-Run without SDL: have nopic1. want nopic-continuous (also reinstate speed)
+Reinstate speed measuring (with/out SDL)
 
 Dump nametable for game-attract screen and level 1 from honesty
 Run dumped nametable in amnesty, for visual comparison
