@@ -1,35 +1,40 @@
 
 module UsingSDL (main,nopic1) where
 
+import Behaviour (Behaviour(..),Report(..))
 import Control.Concurrent (threadDelay)
 import Control.Monad (when)
 import Data.List.Extra (groupSort)
 import Data.Map (Map)
 import Data.Word8 (Word8)
 import Foreign.C.Types (CInt)
+import Frame (Frame)
 import GHC.Int (Int64)
 import SDL (Renderer,Rectangle(..),V2(..),V4(..),Point(P),($=))
---import System.Clock (TimeSpec(..),Clock(Monotonic),getTime) -- TODO: reinstate?
 import Text.Printf (printf)
 import Types (Picture(..),XY(..),RGB(..),Key(..),Keys(..))
 import qualified Data.Map.Strict as Map (lookup,fromList,toList)
 import qualified Data.Set as Set (empty,insert,delete)
 import qualified Data.Text as Text (pack)
-import qualified Emu as Emu (Context,State,state0,emulate,Result(..))
+import qualified Emu as Emu (Context,emulate)
+import qualified Frame (toPicture,toFrameHash)
 import qualified SDL
 import qualified System (top)
-import qualified Frame (toPicture,toFrameHash)
+--import System.Clock (TimeSpec(..),Clock(Monotonic),getTime) -- TODO: reinstate?
 
 nopic1 :: Emu.Context -> IO ()
 nopic1 context = do
   let the_effect = System.top
-  let keys = Keys { pressed = Set.empty }
-  let state = Emu.state0
-  let res = Emu.emulate the_effect context keys state
-  let Emu.Result{frame} = res
-  let frameCount = 1::Int
-  printf "%03d %s\n" frameCount (show $ Frame.toFrameHash frame)
-  pure ()
+  let keys0 = Keys { pressed = Set.empty }
+  let
+    loop :: Behaviour -> IO ()
+    loop = \case
+      Log{} -> undefined -- TODO
+      Poll f -> loop (f keys0)
+      Render frame _ _ -> do
+        printf "%03d %s\n" (1::Int) (show $ Frame.toFrameHash frame)
+  loop $ Emu.emulate context the_effect
+
 
 data ScreenSpec = ScreenSpec
   { sf ::Int
@@ -37,8 +42,7 @@ data ScreenSpec = ScreenSpec
   }
 
 data World = World
-  { state :: Emu.State
-  , keys :: Keys
+  { keys :: Keys
   , frameCount :: Int
   , accNanos :: Int64
   }
@@ -58,45 +62,42 @@ main context = do
   win <- SDL.createWindow (Text.pack $ "NES") $ winConfig
   renderer <- SDL.createRenderer win (-1) SDL.defaultRenderer
   let assets = DrawAssets { renderer, ss, offset = border, accpix }
-  let keys = Keys { pressed = Set.empty }
-  let state0 = Emu.state0
-  let world0 = World { state = state0, keys, frameCount = 0, accNanos = 0 }
+  let keys0 = Keys { pressed = Set.empty }
+  let world0 = World { keys = keys0, frameCount = 0, accNanos = 0 }
+  let behaviour0 = Emu.emulate context the_effect
   let
-    loop :: World -> IO ()
-    loop World{state,keys,frameCount,accNanos} = do
+    loop :: World -> Behaviour -> IO ()
+    loop world = \case
+      Log{} -> undefined -- TODO
 
-      events <- SDL.pollEvents
-      let interesting = [ i | e <- events, i <- interestingOf e ]
-      if Quit `elem` interesting then pure () else do --quit
-      keys <- pure $ foldl insertInteresting keys interesting
+      Poll f -> do
+        events <- SDL.pollEvents
+        let interesting = [ i | e <- events, i <- interestingOf e ]
+        if Quit `elem` interesting then pure () else do --quit
+          keys <- pure $ foldl insertInteresting (keys world) interesting
+          loop world { keys } (f keys)
 
-      --(x,xNanos) <- measureNanos $ do pure (Emu.emulate the_effect context keys state)
-      let res = Emu.emulate the_effect context keys state
-      let xNanos = 0
-      let Emu.Result{frame,state} = res
-      let picture = Frame.toPicture frame
-      drawEverything assets picture
-
-      let world = World { state, keys, frameCount = frameCount+1, accNanos = accNanos + xNanos }
-      printStatLine world res
-
-      threadDelay (1000000 `div` 60) -- 1/60 sec
-      loop world
+      Render frame report behaviour  -> do
+        printStatLine world frame report
+        drawEverything assets (Frame.toPicture frame)
+        threadDelay (1000000 `div` 60) -- 1/60 sec
+        loop world behaviour
 
   setColor renderer darkGrey
   SDL.clear renderer
-
-  loop world0
+  loop world0 behaviour0
   SDL.destroyRenderer renderer
   SDL.destroyWindow win
   SDL.quit
 
-printStatLine :: World -> Emu.Result -> IO ()
-printStatLine World{frameCount,keys}
-  Emu.Result{frame,regs,vmemReadCount=vr,vramWriteCount=vw} = do
+printStatLine :: World -> Frame -> Report -> IO ()
+printStatLine World{frameCount,keys} frame
+  Report{regs,vmemReadCount=vr,vramWriteCount=vw} = do
   printf "%03d %s %s #vw=%d, #vr=%d regs=%s\n"
     frameCount (show keys) (show frameHash) vw vr (show (Map.toList regs))
     where frameHash = Frame.toFrameHash frame
+
+
 {-printStatLine :: World -> Emu.FrameHash -> IO ()
 printStatLine World{frame,accNanos} frameHash = do
   let

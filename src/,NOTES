@@ -1,5 +1,4 @@
 
-Better interface between Emu and UsingSDL (Action) allow logging
 Run without SDL: have nopic1. want nopic-continuous (also reinstate speed)
 
 Dump nametable for game-attract screen and level 1 from honesty

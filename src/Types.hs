@@ -19,7 +19,7 @@ data Picture where
 data XY a = XY { y :: a, x :: a } deriving (Eq,Ord,Functor) -- sort: y,x
 data RGB a = RGB { r :: a, g :: a, b :: a }
 
-data Key
+data Key -- TODO: rename Buttons, corresponding to NES controller
   = KeyEnter
   | KeyShift
   | KeyZ

@@ -1,10 +1,10 @@
 
 module Emu
-  ( Context, makeContext
-  , State , state0, emulate
-  , Result(..)
+  ( Context, makeContext -- TODO: just take NesFile
+  , emulate
   ) where
 
+import Behaviour (Behaviour(..),Report(..))
 import Col6 (Col6,makeCol6)
 import Data.Bits (testBit,(.&.),(.|.),shiftR,shiftL)
 import Data.Map (Map)
@@ -17,6 +17,17 @@ import Text.Printf (printf)
 import Types (XY(..),Keys(..),HiLo(..),Reg)
 import qualified Data.Map as Map (empty,insert,lookup)
 import qualified Rom8k (read)
+
+emulate :: Context -> Effect () -> Behaviour -- TODO: take NesFile not Context
+emulate context effect = loop state0
+  where
+    loop :: State -> Behaviour
+    loop state0 = do
+      Poll $ \keys -> do
+        let res = emulateOLD effect context keys state0 -- TODO inline
+        let Result{frame,state,vmemReadCount,vramWriteCount,regs} = res
+        let report = Report { vmemReadCount, vramWriteCount, regs }
+        Render frame report (loop state)
 
 data DuringEmulation
 instance Phase DuringEmulation where
@@ -61,8 +72,8 @@ state0 = State
   , vram = Map.empty
   }
 
-emulate :: Effect () -> Context -> Keys -> State -> Result
-emulate e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkResult s
+emulateOLD :: Effect () -> Context -> Keys -> State -> Result
+emulateOLD e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkResult s
   where
     loop :: State -> Effect b -> (State -> b -> r) -> r
     loop s@State{vmemReadCount,vramWriteCount} e k = case e of
