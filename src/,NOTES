@@ -1,6 +1,4 @@
 
-scavenge honesty for code to convert 6bit col to RGB
-
 Better interface between Emu and UsingSDL (Action) allow logging
 Run without SDL: have nopic1. want nopic-continuous (also reinstate speed)
 
