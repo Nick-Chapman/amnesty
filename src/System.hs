@@ -15,7 +15,7 @@ top = do
   mode <- selectMode
   PPU.effect mode
 
-setupNameTable :: Eff p () -- to show PatL
+setupNameTable :: Eff p () -- to show CHR(PatL/PatR)
 setupNameTable =
   sequence_
   [ do
@@ -36,9 +36,10 @@ litHL w16 = do
 
 selectMode :: Eff p PPU.Mode
 selectMode = do
+  zero <- LitB 0
   byte <- GetReg Reg2
-  bit <- TestBit byte 0
-  pure (if bit == False then PPU.Mode_Tiles else PPU.Mode_NameTable)
+  bit <- TestBit byte zero
+  pure (if bit == False then PPU.Mode_CHR else PPU.Mode_NameTable)
 
 doKeyX :: Eff p ()
 doKeyX = do

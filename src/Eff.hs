@@ -27,8 +27,7 @@ data Eff p x where
   GetReg :: Reg -> Eff p (Byte p)
 
   LitB :: Word8 -> Eff p (Byte p)
-  TestBit :: Byte p -> Int -> Eff p Bool -- TODO: kill, subsumed by TestBitB
-  TestBitB :: Byte p -> Byte p -> Eff p Bool
+  TestBit :: Byte p -> Byte p -> Eff p Bool
   EqB :: Byte p -> Byte p -> Eff p Bool -- TODO: better, return (Bit p)?
   AddB :: Byte p -> Byte p -> Eff p (Byte p)
   BwAnd :: Byte p -> Byte p -> Eff p (Byte p)

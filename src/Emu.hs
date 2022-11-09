@@ -94,8 +94,6 @@ emulate e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkResult s
       LitB n -> do
         k s n
       TestBit b n -> do
-        k s (b `testBit` n)
-      TestBitB b n -> do
         k s (b `testBit` fromIntegral n)
       EqB b1 b2 -> do
         k s (b1 == b2)

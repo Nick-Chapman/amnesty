@@ -4,7 +4,7 @@ module PPU (effect,Mode(..)) where
 import Eff (Eff(..),Byte)
 import Types (XY(..),HiLo(..),Reg(..))
 
-data Mode = Mode_Tiles | Mode_NameTable
+data Mode = Mode_CHR | Mode_NameTable
 
 effect :: Mode -> Eff p ()
 effect mode =
@@ -59,7 +59,7 @@ getTilePlaneBit pat plane tile fine = do
     n <- BwOr n1 planeOffset
     BwOr shifted n
   byte <- ReadVmem HiLo { hi, lo }
-  TestBitB byte fineX
+  TestBit byte fineX
 
 splitCourseFine :: Byte p -> Eff p (HiLo (Byte p))
 splitCourseFine b = do
@@ -78,7 +78,7 @@ nibbles b = do
 
 pickTileForCoarse :: Mode -> XY (Byte p) -> Eff p (Maybe (Pat, Byte p))
 pickTileForCoarse = \case
-  Mode_Tiles -> pickShowPatTables
+  Mode_CHR -> pickViaCHR
   Mode_NameTable -> pickViaNameTable
 
 
@@ -96,37 +96,19 @@ pickViaNameTable coarse = do
   pure (Just (PatL,tile))
 
 
-pickShowPatTables :: XY (Byte p) -> Eff p (Maybe (Pat, Byte p))
-pickShowPatTables coarse = do
-  -- at runtime ths would consult the nametable
+pickViaCHR :: XY (Byte p) -> Eff p (Maybe (Pat, Byte p))
+pickViaCHR coarse = do
   let XY{x,y} = coarse
   HiLo{hi=hx,lo=lx} <- nibbles x
   HiLo{hi=hy,lo=ly} <- nibbles y
   zero <- LitB 0
   showLeft <- EqB hx zero
-
   swapLR <- do
     reg1 <- GetReg Reg1
-    TestBit reg1 0
-
+    TestBit reg1 zero
   let pat = if (showLeft /= swapLR) then PatL else PatR
-
   yon <- EqB hy zero
   if not yon then pure Nothing else do
     shifted <- ly `ShiftL` 4
     tile <- BwOr shifted lx
     pure (Just (pat,tile))
-
-{-
-_litXY :: XY Word8 -> Eff p (XY (Byte p))
-_litXY XY{x,y} = do
-  x <- LitB x
-  y <- LitB y
-  pure XY {x,y}
-
-_eqXY :: XY (Byte p) -> XY (Byte p) -> Eff p Bool
-_eqXY XY{x=x1,y=y1} XY{x=x2,y=y2} = do
-  b1 <- EqB x1 x2
-  b2 <- EqB y1 y2
-  pure (b1 && b2)
--}
