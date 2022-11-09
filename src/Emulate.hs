@@ -73,14 +73,13 @@ state0 = State
 emulateOLD :: Effect () -> Context -> Keys -> State -> Result
 emulateOLD e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkResult s
   where
-    loop :: State -> Effect b -> (State -> b -> r) -> r
+    loop :: forall b r. State -> Effect b -> (State -> b -> r) -> r
     loop s@State{vmemReadCount,vramWriteCount} e k = case e of
       Ret x -> k s x
       Bind e f -> loop s e $ \s a -> loop s (f a) k
       If b -> k s b
 
-      Repeat n eff -> do
-        -- TODO: avoid this list comprehension with an inner loop
+      Repeat n eff ->
         loop s (sequence_ [ eff | _ <- [0::Int .. n-1] ]) k
 
       IsPressed key -> do
