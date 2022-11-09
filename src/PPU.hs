@@ -7,16 +7,29 @@ import Types (XY(..),HiLo(..),Reg(..))
 data Mode = Mode_CHR | Mode_NameTable
 
 effect :: Mode -> Eff p ()
-effect mode =
+effect mode = do
+  LitB 0 >>= SetReg RegScanY
   sequence_
-  [ do
-      x <- LitB x
-      y <- LitB y
-      doPix mode XY {x,y}
-      pure ()
-  | y <- [0..239]
-  , x <- [0..255]
-  ]
+    [ do
+        y <- getAndInc RegScanY
+        -- no need to zero X as it initializes to 0, and wraps to 0
+        sequence_
+          [ do
+              x <- getAndInc RegScanX
+              doPix mode XY {x,y}
+              pure ()
+          | _ <- [0::Int ..255]
+          ]
+    | _ <- [0::Int ..239]
+    ]
+
+getAndInc :: Reg -> Eff p (Byte p)
+getAndInc r = do
+  x <- GetReg r
+  one <- LitB 1
+  x1 <- AddB x one
+  SetReg r x1
+  pure x
 
 doPix :: Mode -> XY (Byte p) -> Eff p ()
 doPix mode xy@XY{x,y} = do

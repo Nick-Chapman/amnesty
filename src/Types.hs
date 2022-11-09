@@ -47,5 +47,5 @@ instance Show a => Show (RGB a) where show RGB{r,g,b} = "RGB" ++ show (r,g,b)
 
 data HiLo a = HiLo { hi :: a, lo :: a } deriving (Eq,Ord,Functor,Show)
 
-data Reg = Reg1 | Reg2
+data Reg = Reg1 | Reg2 | RegScanX | RegScanY
   deriving (Eq,Ord,Show)
