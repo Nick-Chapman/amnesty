@@ -1,19 +1,15 @@
 
-intro type Col for 6bit colours
-convert 6bit col to RGB via fixed mapping in UsingSDL
+scavenge honesty for code to convert 6bit col to RGB
 
 Better interface between Emu and UsingSDL (Action) allow logging
-
-Have PPU generate picture from nametable
-PPU generate picture using pallet info in nametable(attribute part)
+Run without SDL: have nopic1. want nopic-continuous (also reinstate speed)
 
 Dump nametable for game-attract screen and level 1 from honesty
 Run dumped nametable in amnesty, for visual comparison
+PPU generate picture using pallet info in nametable(attribute part)
 
 PPU use regs to track h/v scan counting
 Speed up! (do I need compilation already!)
-
-Run without SDL
 
 Use regs to store key-last-state and so detect edges.
 Key/Reg to control other features such as flip.
