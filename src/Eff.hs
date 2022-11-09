@@ -10,13 +10,14 @@ import Types (Key,XY,HiLo,Reg)
 
 class ( Show (Byte p)
       ) => Phase p where
+  type Bit p
   type Byte p
-  -- TODO: type Bit p
   -- TODO: type Addr p
 
 data Eff p x where
   Ret :: x -> Eff p x
   Bind :: Eff p x -> (x -> Eff p y) -> Eff p y
+  If :: Bit p -> Eff p Bool
 
   IsPressed :: Key -> Eff p Bool
   EmitPixel :: XY (Byte p) -> Byte p -> Eff p ()
@@ -27,8 +28,8 @@ data Eff p x where
   GetReg :: Reg -> Eff p (Byte p)
 
   LitB :: Word8 -> Eff p (Byte p)
-  TestBit :: Byte p -> Byte p -> Eff p Bool
-  EqB :: Byte p -> Byte p -> Eff p Bool -- TODO: better, return (Bit p)?
+  TestBit :: Byte p -> Byte p -> Eff p (Bit p)
+  EqB :: Byte p -> Byte p -> Eff p (Bit p)
   AddB :: Byte p -> Byte p -> Eff p (Byte p)
   BwAnd :: Byte p -> Byte p -> Eff p (Byte p)
   BwOr :: Byte p -> Byte p -> Eff p (Byte p)

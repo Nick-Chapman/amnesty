@@ -1,7 +1,7 @@
 
 module PPU (effect,Mode(..)) where
 
-import Eff (Eff(..),Byte)
+import Eff (Eff(..),Bit,Byte)
 import Types (XY(..),HiLo(..),Reg(..))
 
 data Mode = Mode_CHR | Mode_NameTable
@@ -35,9 +35,11 @@ doPix mode xy@XY{x,y} = do
       col <- colourOfPlanes plane1 plane2
       EmitPixel xy col
 
-colourOfPlanes :: Bool -> Bool -> Eff p (Byte p)
-colourOfPlanes plane1 plane2 = LitB $
-  case (plane1,plane2) of
+colourOfPlanes :: Bit p -> Bit p -> Eff p (Byte p)
+colourOfPlanes plane1 plane2 = do
+  b1 <- If plane1
+  b2 <- If plane2
+  LitB $ case (b1,b2) of
     (True,True) -> 6 -- red
     (True,False) -> 44 -- cyan
     (False,True) -> 1 -- blue
@@ -46,7 +48,7 @@ colourOfPlanes plane1 plane2 = LitB $
 data Plane = Plane1 | Plane2
 data Pat = PatL | PatR
 
-getTilePlaneBit :: Pat -> Plane -> Byte p -> XY (Byte p) -> Eff p Bool
+getTilePlaneBit :: Pat -> Plane -> Byte p -> XY (Byte p) -> Eff p (Bit p)
 getTilePlaneBit pat plane tile fine = do
   tableOffset <- LitB (case pat of PatL -> 0; PatR -> 16)
   planeOffset <- LitB (case plane of Plane1 -> 0; Plane2 -> 8)
@@ -102,12 +104,12 @@ pickViaCHR coarse = do
   HiLo{hi=hx,lo=lx} <- nibbles x
   HiLo{hi=hy,lo=ly} <- nibbles y
   zero <- LitB 0
-  showLeft <- EqB hx zero
+  showLeft <- EqB hx zero >>= If
   swapLR <- do
     reg1 <- GetReg Reg1
-    TestBit reg1 zero
+    TestBit reg1 zero >>= If
   let pat = if (showLeft /= swapLR) then PatL else PatR
-  yon <- EqB hy zero
+  yon <- EqB hy zero >>= If
   if not yon then pure Nothing else do
     shifted <- ly `ShiftL` 4
     tile <- BwOr shifted lx

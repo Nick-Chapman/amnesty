@@ -20,6 +20,7 @@ import qualified Rom8k (read)
 
 data DuringEmulation
 instance Phase DuringEmulation where
+  type Bit DuringEmulation = Bool
   type Byte DuringEmulation = Word8
 
 type Effect a = Eff DuringEmulation a
@@ -67,6 +68,7 @@ emulate e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkResult s
     loop s@State{vmemReadCount,vramWriteCount} e k = case e of
       Ret x -> k s x
       Bind e f -> loop s e $ \s a -> loop s (f a) k
+      If b -> k s b
 
       IsPressed key -> do
         k s (key `elem` pressed)

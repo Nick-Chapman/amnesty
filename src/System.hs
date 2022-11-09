@@ -38,8 +38,8 @@ selectMode :: Eff p PPU.Mode
 selectMode = do
   zero <- LitB 0
   byte <- GetReg Reg2
-  bit <- TestBit byte zero
-  pure (if bit == False then PPU.Mode_CHR else PPU.Mode_NameTable)
+  bool <- TestBit byte zero >>= If
+  pure (if bool == False then PPU.Mode_CHR else PPU.Mode_NameTable)
 
 doKeyX :: Eff p ()
 doKeyX = do
