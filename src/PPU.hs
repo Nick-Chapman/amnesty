@@ -67,15 +67,6 @@ pickTileForCoarse = \case
   Mode_CHR -> pickViaCHR
   Mode_NameTable -> pickViaNameTable
 
-colourOfPlanes :: Bit p -> Bit p -> Eff p (Byte p)
-colourOfPlanes plane1 plane2 = do
-  b1 <- If plane1
-  b2 <- If plane2
-  LitB $ case (b1,b2) of
-    (True,True) -> 6 -- red
-    (True,False) -> 44 -- cyan
-    (False,True) -> 1 -- blue
-    (False,False) -> 63 -- black
 
 data Plane = Plane1 | Plane2
 
@@ -146,3 +137,15 @@ pickViaCHR coarse = do
     shifted <- ly `ShiftL` 4
     tile <- BwOr shifted lx
     pure (Just (pat,tile))
+
+
+-- colour from palettes
+
+colourOfPlanes :: Bit p -> Bit p -> Eff p (Byte p)
+colourOfPlanes d e = do
+  z <- Bit0
+  let a = z -- Background
+  let (b,c) = (z,z) -- palette 0
+  hi <- LitB 0x3f
+  lo <- MakeByte (z,z,z,a,b,c,d,e)
+  ReadVmem HiLo { hi, lo }

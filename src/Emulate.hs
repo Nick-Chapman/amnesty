@@ -69,6 +69,21 @@ inner c@Context{chr1,keys} s@State{vmemReadCount,vramWriteCount} e k = case e of
   SetReg r b -> do
     let State{regs} = s
     k s { regs = Map.insert r b regs } ()
+
+  Bit0 -> k s False
+  Bit1 -> undefined
+  MakeByte (a,b,c,d,e,f,g,h) -> do
+    let byte =
+          (if a then 128 else 0) .|.
+          (if b then  64 else 0) .|.
+          (if c then  32 else 0) .|.
+          (if d then  16 else 0) .|.
+          (if e then   8 else 0) .|.
+          (if f then   4 else 0) .|.
+          (if g then   2 else 0) .|.
+          (if h then   1 else 0) .|.
+          0
+    k s byte
   LitB n -> do
     k s n
   TestBit b n -> do
@@ -126,7 +141,15 @@ readVmem chr1 State{vram} HiLo{hi,lo} = do
   let a :: Word16 = (fromIntegral hi `shiftL` 8) .|. fromIntegral lo
   if
     | a < 0x2000 -> Rom8k.read chr1 a
-    | a < 0x3000 -> maybe 0 id $ Map.lookup a vram
+    | a < 0x3000 ->
+      -- nametable(+atts). TODO: support mirroring & mapping to 2k VRAM
+      maybe 0 id $ Map.lookup a vram
+
+    | a < 0x3f00 -> error $ printf "readVmem: %x -- unexpected mirror read" a
+    | a < 0x3f1f -> do
+      -- palletes: TODO: map to sep 32 byte RAM space
+        maybe 0 id $ Map.lookup a vram
+
     | True -> error $ printf "readVmem: %x" a
 
 emitPixel :: XY Word8 -> Col6 -> State -> State

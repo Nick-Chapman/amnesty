@@ -28,6 +28,12 @@ data Eff p x where
   SetReg :: Reg -> Byte p -> Eff p ()
   GetReg :: Reg -> Eff p (Byte p)
 
+  Bit0 :: Eff p (Bit p)
+  Bit1 :: Eff p (Bit p)
+
+  MakeByte :: (Bit p, Bit p, Bit p, Bit p, Bit p, Bit p, Bit p, Bit p) -> Eff p (Byte p)
+
+
   LitB :: Word8 -> Eff p (Byte p)
   TestBit :: Byte p -> Byte p -> Eff p (Bit p)
   EqB :: Byte p -> Byte p -> Eff p (Bit p)
