@@ -118,6 +118,8 @@ emulateOLD e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkResult s
         k s (b1 == b2)
       AddB a b -> do
         k s (a+b)
+      SubtractB a b -> do
+        k s (a-b)
       BwAnd b1 b2 -> do
         k s (b1 .&. b2)
       BwOr b1 b2 -> do

@@ -92,7 +92,9 @@ getTilePlaneBit pat plane tile fine = do
     n <- BwOr n1 planeOffset
     BwOr shifted n
   byte <- ReadVmem HiLo { hi, lo }
-  TestBit byte fineX
+  seven <- LitB 7
+  fineXflipped <- seven `SubtractB` fineX -- [0..7] --> [7..0]
+  TestBit byte fineXflipped
 
 splitCourseFine :: Byte p -> Eff p (HiLo (Byte p))
 splitCourseFine b = do

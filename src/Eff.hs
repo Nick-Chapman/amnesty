@@ -32,6 +32,7 @@ data Eff p x where
   TestBit :: Byte p -> Byte p -> Eff p (Bit p)
   EqB :: Byte p -> Byte p -> Eff p (Bit p)
   AddB :: Byte p -> Byte p -> Eff p (Byte p)
+  SubtractB :: Byte p -> Byte p -> Eff p (Byte p)
   BwAnd :: Byte p -> Byte p -> Eff p (Byte p)
   BwOr :: Byte p -> Byte p -> Eff p (Byte p)
   ShiftL :: Byte p -> Int -> Eff p (Byte p)
