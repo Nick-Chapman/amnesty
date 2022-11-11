@@ -11,13 +11,20 @@ import qualified PPU (effect,Mode(..))
 
 dk50 :: Eff p ()
 dk50 = do
+  doKeys
   setupNameTableTD NameTableTestData.dk50
   PPU.effect PPU.Mode_NameTable
 
 dk400 :: Eff p ()
 dk400 = do
+  doKeys
   setupNameTableTD NameTableTestData.dk400
   PPU.effect PPU.Mode_NameTable
+
+showCHR :: Eff p () -- show the tiles in PatL/PatR
+showCHR = do
+  doKeys
+  PPU.effect PPU.Mode_CHR
 
 setupNameTableTD :: [Word8] -> Eff p ()
 setupNameTableTD testData = do
@@ -36,30 +43,22 @@ litHL w16 = do
   pure HiLo {hi,lo}
 
 
-showCHR :: Eff p () -- show the tiles in PatL/PatR
-showCHR = do
-  doKeys -- X swaps left/right (just to demonstate some interactive control)
-  PPU.effect PPU.Mode_CHR
 
 doKeys :: Eff p ()
 doKeys = do
-  doKeyX -- Reg1
-  doKeyZ -- Reg2
+  doKey KeyX RegX
+  doKey KeyZ RegZ
+  doKey KeyN RegN
+  doKey KeyP RegP
 
-doKeyX :: Eff p ()
-doKeyX = do
-  b <- IsPressed KeyX
+doKey :: Key -> Reg -> Eff p ()
+doKey key reg = do
+  b <- IsPressed key
   if not b then pure () else do
-    incrementR Reg1
+    incrementReg reg
 
-doKeyZ :: Eff p ()
-doKeyZ = do
-  b <- IsPressed KeyZ
-  if not b then pure () else do
-    incrementR Reg2
-
-incrementR :: Reg -> Eff p ()
-incrementR reg = do
+incrementReg :: Reg -> Eff p ()
+incrementReg reg = do
   v <- GetReg reg
   one <- LitB 1
   v' <- AddB v one

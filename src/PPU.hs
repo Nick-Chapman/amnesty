@@ -24,6 +24,27 @@ getAndInc r = do
   SetReg r x1
   pure x
 
+
+data Status = Status
+  { nt :: NT
+  , pat :: Pat
+  }
+
+data NT = NT0 | NT1 | NT2 | NT3 -- which nametable to show
+data Pat = PatL | PatR
+
+statusDev :: Eff p Status -- status for dev; driven from keys
+statusDev = do
+  x <- GetReg RegN
+  b1 <- LitB 1 >>= TestBit x >>= If
+  b0 <- LitB 0 >>= TestBit x >>= If
+  let nt = if b1 then (if b0 then NT3 else NT2) else (if b0 then NT1 else NT0)
+  x <- GetReg RegP
+  b0 <- LitB 0 >>= TestBit x >>= If
+  let pat = if b0 then PatR else PatL
+  pure Status { nt, pat }
+
+
 doPix :: Mode -> XY (Byte p) -> Eff p ()
 doPix mode xy@XY{x,y} = do
   HiLo{hi=coarseX,lo=fineX} <- splitCourseFine x
@@ -41,6 +62,11 @@ doPix mode xy@XY{x,y} = do
       col <- colourOfPlanes plane1 plane2
       EmitPixel xy col
 
+pickTileForCoarse :: Mode -> XY (Byte p) -> Eff p (Maybe (Pat, Byte p)) -- TODO: inline
+pickTileForCoarse = \case
+  Mode_CHR -> pickViaCHR
+  Mode_NameTable -> pickViaNameTable
+
 colourOfPlanes :: Bit p -> Bit p -> Eff p (Byte p)
 colourOfPlanes plane1 plane2 = do
   b1 <- If plane1
@@ -52,7 +78,6 @@ colourOfPlanes plane1 plane2 = do
     (False,False) -> 63 -- black
 
 data Plane = Plane1 | Plane2
-data Pat = PatL | PatR
 
 getTilePlaneBit :: Pat -> Plane -> Byte p -> XY (Byte p) -> Eff p (Bit p)
 getTilePlaneBit pat plane tile fine = do
@@ -84,15 +109,10 @@ nibbles b = do
   pure HiLo {hi,lo}
 
 
-pickTileForCoarse :: Mode -> XY (Byte p) -> Eff p (Maybe (Pat, Byte p))
-pickTileForCoarse = \case
-  Mode_CHR -> pickViaCHR
-  Mode_NameTable -> pickViaNameTable
-
-
 pickViaNameTable :: XY (Byte p) -> Eff p (Maybe (Pat, Byte p))
 pickViaNameTable coarse = do
-  ntHiBase <- LitB 0x20 -- 0x20,0x24,0x28,0x2C -- TODO: pick which one?
+  Status{nt,pat} <- statusDev
+  ntHiBase <- ntHiFromStatus nt
   let XY{x,y} = coarse -- both x/y are max 5 bits
   mask <- LitB 7
   yLo3 <- y `BwAnd` mask
@@ -101,7 +121,14 @@ pickViaNameTable coarse = do
   hi <- BwOr yHi2 ntHiBase
   lo <- BwOr x yLo3shifted
   tile <- ReadVmem HiLo { hi, lo }
-  pure (Just (PatR,tile)) -- TODO: L/R which one?
+  pure (Just (pat,tile)) -- TODO: L/R which one?
+
+ntHiFromStatus :: NT -> Eff p (Byte p)
+ntHiFromStatus nt = LitB $ case nt of
+  NT0 -> 0x20
+  NT1 -> 0x24
+  NT2 -> 0x28
+  NT3 -> 0x2C
 
 
 pickViaCHR :: XY (Byte p) -> Eff p (Maybe (Pat, Byte p))
@@ -111,10 +138,7 @@ pickViaCHR coarse = do
   HiLo{hi=hy,lo=ly} <- nibbles y
   zero <- LitB 0
   showLeft <- EqB hx zero >>= If
-  swapLR <- do
-    reg1 <- GetReg Reg1
-    TestBit reg1 zero >>= If
-  let pat = if (showLeft /= swapLR) then PatL else PatR
+  let pat = if showLeft then PatL else PatR
   yon <- EqB hy zero >>= If
   if not yon then pure Nothing else do
     shifted <- ly `ShiftL` 4

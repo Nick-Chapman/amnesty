@@ -11,8 +11,8 @@ import Frame (Frame,makeFrame)
 import NesFile (NesFile(..))
 import Rom8k (Rom8k)
 import Text.Printf (printf)
-import Types (XY(..),Keys(..),HiLo(..),Reg)
-import qualified Data.Map as Map (empty,insert,lookup)
+import Types (XY(..),Keys(..),HiLo(..),Reg(..))
+import qualified Data.Map as Map (empty,insert,lookup,fromList)
 import qualified Rom8k (read)
 
 emulate :: NesFile -> Effect () -> Behaviour
@@ -64,11 +64,16 @@ state0 :: State
 state0 = State
   { emitted = Map.empty
   , countEmitted = 0
-  , regs = Map.empty
+  , regs = regs0
   , vmemReadCount = 0
   , vramWriteCount = 0
   , vram = Map.empty
   }
+
+regs0 :: Map Reg Word8
+regs0 = Map.fromList
+  [ (RegP,1)
+  ]
 
 emulateOLD :: Effect () -> Context -> Keys -> State -> Result
 emulateOLD e0 context Keys{pressed} s0 = loop s0 e0 $ \s () -> mkResult s

@@ -10,7 +10,7 @@ import Data.Word8 (Word8)
 import Emulate (Effect,emulate)
 import Foreign.C.Types (CInt)
 import Frame (Frame)
-import GHC.Int (Int64)
+--import GHC.Int (Int64)
 import NesFile (NesFile)
 import SDL (Renderer,Rectangle(..),V2(..),V4(..),Point(P),($=))
 import System.Clock (TimeSpec(..),Clock(Monotonic),getTime)
@@ -23,25 +23,21 @@ import qualified Frame (toPicture,toFrameHash)
 import qualified SDL
 
 runTerm :: Bool -> Maybe Int -> NesFile -> Effect () -> IO ()
-runTerm doReport maxM nesFile the_effect = do
+runTerm verb maxM nesFile the_effect = do
   let stop = case maxM of
         Nothing -> \_ -> False
         Just max -> \n -> n==max
-  let keys0 = Keys { pressed = Set.empty }
+  let keys = Keys { pressed = Set.empty }
   let
     loop :: TimeSpec -> Int -> Behaviour -> IO ()
     loop time0 n = \case
       Log{} -> undefined -- TODO
-      Poll f -> loop time0 n (f keys0)
+      Poll f -> loop time0 n (f keys)
       Render frame report behaviour -> do
         let h = Frame.toFrameHash frame
         if h /= h then error "" else do -- hack, forcing!
           time <- getTime Monotonic
-          let Report{vmemReadCount=vr,vramWriteCount=vw} = report
-          printf "%03d %s%s\n"
-            n (show $ Frame.toFrameHash frame)
-            (if doReport then printf " %s #vw=%d, #vr=%d"
-              (seeTimeSpec (time-time0)) vw vr else "")
+          printStatLine verb World { keys, frameCount = n } frame (time-time0) 0 report
           if stop n then pure () else
             loop time (n+1) behaviour
 
@@ -57,11 +53,10 @@ data ScreenSpec = ScreenSpec
 data World = World
   { keys :: Keys
   , frameCount :: Int
-  , accNanos :: Int64
   }
 
-runSDL :: NesFile -> Effect () -> IO ()
-runSDL nesfile the_effect = do
+runSDL :: Bool -> NesFile -> Effect () -> IO ()
+runSDL verb nesfile the_effect = do
   let accpix = False
   let ss = ScreenSpec {sf = 2,size = XY { x = 256, y = 240 } }
   let! _ = keyMapTable
@@ -75,7 +70,7 @@ runSDL nesfile the_effect = do
   renderer <- SDL.createRenderer win (-1) SDL.defaultRenderer
   let assets = DrawAssets { renderer, ss, offset = border, accpix }
   let keys0 = Keys { pressed = Set.empty }
-  let world0 = World { keys = keys0, frameCount = 1, accNanos = 0 }
+  let world0 = World { keys = keys0, frameCount = 1 }
   let behaviour0 = emulate nesfile the_effect
 
   let
@@ -96,7 +91,7 @@ runSDL nesfile the_effect = do
           t1 <- getTime Monotonic
           drawEverything assets (Frame.toPicture frame)
           t2 <- getTime Monotonic
-          printStatLine world frame (t1-time) (t2-t1) report
+          printStatLine verb world frame (t1-time) (t2-t1) report
           let _ = threadDelay (1000000 `div` 60) -- 1/60 sec
           loop t2 world { frameCount = frameCount world + 1 } behaviour
 
@@ -111,13 +106,19 @@ runSDL nesfile the_effect = do
   SDL.quit
 
 
-printStatLine :: World -> Frame -> TimeSpec -> TimeSpec -> Report -> IO ()
-printStatLine World{frameCount,keys} frame t1 t2
+printStatLine :: Bool -> World -> Frame -> TimeSpec -> TimeSpec -> Report -> IO ()
+printStatLine verb World{frameCount,keys} frame t1 t2
   Report{regs,vmemReadCount=vr,vramWriteCount=vw} = do
-  printf "%03d %s %s %s %s #vw=%d, #vr=%d regs=%s\n"
-    frameCount (show keys) (show $ Frame.toFrameHash frame)
-    (seeTimeSpec t1) (seeTimeSpec t2)
-    vw vr (show (Map.toList regs))
+  if
+    | verb -> do
+        printf "%03d %s %s %s %s #vw=%d, #vr=%d, regs=%s\n"
+          frameCount (show keys) (show $ Frame.toFrameHash frame)
+          (seeTimeSpec t1) (seeTimeSpec t2)
+          vw vr (show (Map.toList regs))
+    | otherwise -> do
+        printf "%03d %s\n" frameCount (show $ Frame.toFrameHash frame)
+
+
 
 seeTimeSpec :: TimeSpec -> String
 seeTimeSpec TimeSpec{sec,nsec} = do
@@ -167,6 +168,8 @@ keyMapTable = Map.fromList ys
     keyedBy = \case
       KeyZ -> [SDL.KeycodeZ]
       KeyX -> [SDL.KeycodeX]
+      KeyN -> [SDL.KeycodeN]
+      KeyP -> [SDL.KeycodeP]
       KeyEnter -> [SDL.KeycodeReturn]
       KeyShift -> [SDL.KeycodeLShift, SDL.KeycodeRShift]
 

@@ -16,6 +16,7 @@ main = do
 
 data Config = Config
   { path :: FilePath
+  , verb :: Bool
   , mode :: Mode
   , maxFrame :: Maybe Int
   , effect :: forall p. Eff p ()
@@ -24,6 +25,7 @@ data Config = Config
 config0 :: Config
 config0 = Config
   { path = "carts/smb.nes"
+  , verb = False
   , mode = SDL
   , maxFrame = Nothing
   , effect = System.showCHR
@@ -38,6 +40,7 @@ parseCommandLine = loop config0
     loop acc = \case
       [] -> acc
       "nopic":xs -> loop acc { mode = NoPic } xs
+      "verb":xs -> loop acc { verb = True } xs
 
       "smb":xs -> loop acc { path = smbPath } xs
       "dk":xs -> loop acc { path = dkPath } xs
@@ -53,14 +56,14 @@ parseCommandLine = loop config0
     dkPath = "carts/dk.nes"
 
 run :: Config -> IO ()
-run Config{path,mode,maxFrame,effect} = do
+run Config{path,verb,mode,maxFrame,effect} = do
   nesFile <- NesFile.load path
   let _ = print nesFile
   case mode of
     Regression ->
-      UsingSDL.runTerm False (Just 1) nesFile effect
+      UsingSDL.runTerm verb (Just 1) nesFile effect
     NoPic ->
-      UsingSDL.runTerm True maxFrame nesFile effect
+      UsingSDL.runTerm verb maxFrame nesFile effect
     SDL ->
-      UsingSDL.runSDL nesFile effect
+      UsingSDL.runSDL verb nesFile effect
   pure ()
