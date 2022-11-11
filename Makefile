@@ -1,13 +1,19 @@
 
 top: reg diff
 
-reg: .reg/smb1 .reg/dk1
+reg: .reg/smb1 .reg/dk1 .reg/dk50 .reg/dk400
 
 .reg/smb1: .reg .stack carts/smb.nes
-	stack run smb -- -regression > $@
+	stack run -- smb -reg > $@
 
 .reg/dk1: .reg .stack carts/dk.nes
-	stack run dk -- -regression > $@
+	stack run -- dk -reg > $@
+
+.reg/dk50: .reg .stack carts/dk.nes
+	stack run -- dk50 -reg > $@
+
+.reg/dk400: .reg .stack carts/dk.nes
+	stack run -- dk400 -reg > $@
 
 .reg: ; @mkdir -p $@
 

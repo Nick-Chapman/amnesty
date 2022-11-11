@@ -1,32 +1,33 @@
 
-module System (top) where
+module System (showCHR,dk50,dk400) where
 
-import Data.Bits ((.&.),(.|.),shiftL,shiftR)
+import Data.Bits ((.&.),shiftR)
 import Data.Word (Word16)
+import Data.Word (Word8)
 import Eff (Eff(..),Byte)
 import Types (Key(..),Reg(..),HiLo(..))
+import qualified NameTableTestData (dk50,dk400)
 import qualified PPU (effect,Mode(..))
 
-top :: Eff p ()
-top = do
-  doKeyX -- Reg1
-  doKeyZ -- Reg2
-  setupNameTable
-  mode <- selectMode
-  PPU.effect mode
+dk50 :: Eff p ()
+dk50 = do
+  setupNameTableTD NameTableTestData.dk50
+  PPU.effect PPU.Mode_NameTable
 
-setupNameTable :: Eff p () -- to show CHR(PatL/PatR)
-setupNameTable =
+dk400 :: Eff p ()
+dk400 = do
+  setupNameTableTD NameTableTestData.dk400
+  PPU.effect PPU.Mode_NameTable
+
+setupNameTableTD :: [Word8] -> Eff p ()
+setupNameTableTD testData = do
   sequence_
-  [ do
-      a <- litHL (0x2000 + n)
-      b <- LitB tile
-      WriteVmem a b
-  | lo <- [0..15]
-  , hi <- [0..15]
-  , let tile = hi `shiftL` 4 .|. lo
-  , let n = fromIntegral hi `shiftL` 5 .|. fromIntegral lo
-  ]
+    [ do
+        a <- litHL (0x2000 + fromIntegral i)
+        b <- LitB b
+        WriteVmem a b
+    | (i,b) <- zip [0::Int ..] testData
+    ]
 
 litHL :: Word16 -> Eff p (HiLo (Byte p))
 litHL w16 = do
@@ -34,12 +35,16 @@ litHL w16 = do
   lo <- LitB (fromIntegral (w16 .&. 255))
   pure HiLo {hi,lo}
 
-selectMode :: Eff p PPU.Mode
-selectMode = do
-  zero <- LitB 0
-  byte <- GetReg Reg2
-  bool <- TestBit byte zero >>= If
-  pure (if bool == False then PPU.Mode_CHR else PPU.Mode_NameTable)
+
+showCHR :: Eff p () -- show the tiles in PatL/PatR
+showCHR = do
+  doKeys -- X swaps left/right (just to demonstate some interactive control)
+  PPU.effect PPU.Mode_CHR
+
+doKeys :: Eff p ()
+doKeys = do
+  doKeyX -- Reg1
+  doKeyZ -- Reg2
 
 doKeyX :: Eff p ()
 doKeyX = do

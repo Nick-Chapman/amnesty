@@ -1,9 +1,11 @@
 
 module Amnesty (main) where
 
+import Eff (Eff)
 import System.Environment (getArgs)
 import qualified NesFile (load)
-import qualified UsingSDL (nopic,main)
+import qualified System (showCHR,dk50,dk400)
+import qualified UsingSDL (runTerm,runSDL)
 
 main :: IO ()
 main = do
@@ -16,6 +18,7 @@ data Config = Config
   { path :: FilePath
   , mode :: Mode
   , maxFrame :: Maybe Int
+  , effect :: forall p. Eff p ()
   }
 
 config0 :: Config
@@ -23,6 +26,7 @@ config0 = Config
   { path = "carts/smb.nes"
   , mode = SDL
   , maxFrame = Nothing
+  , effect = System.showCHR
   }
 
 data Mode = SDL | NoPic | Regression
@@ -33,19 +37,30 @@ parseCommandLine = loop config0
     loop :: Config -> [String] -> Config
     loop acc = \case
       [] -> acc
-      "smb":xs -> loop acc { path = "carts/smb.nes" } xs
-      "dk":xs -> loop acc { path = "carts/dk.nes" } xs
-      "-regression":xs -> loop acc { mode = Regression } xs
-      "-nopic":xs -> loop acc { mode = NoPic } xs
+      "nopic":xs -> loop acc { mode = NoPic } xs
+
+      "smb":xs -> loop acc { path = smbPath } xs
+      "dk":xs -> loop acc { path = dkPath } xs
+      "dk50":xs -> loop acc { path = dkPath, effect = System.dk50 } xs
+      "dk400":xs -> loop acc { path = dkPath, effect = System.dk400 } xs
+
       "-max":n:xs -> loop acc { maxFrame = Just (read n) } xs
+      "-reg":xs -> loop acc { mode = Regression } xs
+
       path:xs -> loop acc { path } xs
 
+    smbPath = "carts/smb.nes"
+    dkPath = "carts/dk.nes"
+
 run :: Config -> IO ()
-run Config{path,mode,maxFrame} = do
+run Config{path,mode,maxFrame,effect} = do
   nesFile <- NesFile.load path
   let _ = print nesFile
   case mode of
-    Regression -> UsingSDL.nopic False (Just 1) nesFile
-    NoPic -> UsingSDL.nopic True maxFrame nesFile
-    SDL -> UsingSDL.main nesFile
+    Regression ->
+      UsingSDL.runTerm False (Just 1) nesFile effect
+    NoPic ->
+      UsingSDL.runTerm True maxFrame nesFile effect
+    SDL ->
+      UsingSDL.runSDL nesFile effect
   pure ()

@@ -1,5 +1,5 @@
 
-module UsingSDL (main,nopic) where
+module UsingSDL (runTerm,runSDL) where
 
 import Behaviour (Behaviour(..),Report(..))
 import Control.Concurrent (threadDelay)
@@ -7,7 +7,7 @@ import Control.Monad (when)
 import Data.List.Extra (groupSort)
 import Data.Map (Map)
 import Data.Word8 (Word8)
-import Emulate (emulate)
+import Emulate (Effect,emulate)
 import Foreign.C.Types (CInt)
 import Frame (Frame)
 import GHC.Int (Int64)
@@ -21,14 +21,12 @@ import qualified Data.Set as Set (empty,insert,delete)
 import qualified Data.Text as Text (pack)
 import qualified Frame (toPicture,toFrameHash)
 import qualified SDL
-import qualified System (top)
 
-nopic :: Bool -> Maybe Int -> NesFile -> IO ()
-nopic doReport maxM context = do
+runTerm :: Bool -> Maybe Int -> NesFile -> Effect () -> IO ()
+runTerm doReport maxM nesFile the_effect = do
   let stop = case maxM of
         Nothing -> \_ -> False
         Just max -> \n -> n==max
-  let the_effect = System.top
   let keys0 = Keys { pressed = Set.empty }
   let
     loop :: TimeSpec -> Int -> Behaviour -> IO ()
@@ -48,7 +46,7 @@ nopic doReport maxM context = do
             loop time (n+1) behaviour
 
   time0 <- getTime Monotonic
-  loop time0 1 $ emulate context the_effect
+  loop time0 1 $ emulate nesFile the_effect
 
 
 data ScreenSpec = ScreenSpec
@@ -62,9 +60,8 @@ data World = World
   , accNanos :: Int64
   }
 
-main :: NesFile -> IO ()
-main nesfile = do
-  let the_effect = System.top
+runSDL :: NesFile -> Effect () -> IO ()
+runSDL nesfile the_effect = do
   let accpix = False
   let ss = ScreenSpec {sf = 2,size = XY { x = 256, y = 240 } }
   let! _ = keyMapTable

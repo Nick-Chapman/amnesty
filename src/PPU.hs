@@ -92,7 +92,7 @@ pickTileForCoarse = \case
 
 pickViaNameTable :: XY (Byte p) -> Eff p (Maybe (Pat, Byte p))
 pickViaNameTable coarse = do
-  ntHiBase <- LitB 0x20 -- 0x24,0x28,0x2C
+  ntHiBase <- LitB 0x20 -- 0x20,0x24,0x28,0x2C -- TODO: pick which one?
   let XY{x,y} = coarse -- both x/y are max 5 bits
   mask <- LitB 7
   yLo3 <- y `BwAnd` mask
@@ -101,7 +101,7 @@ pickViaNameTable coarse = do
   hi <- BwOr yHi2 ntHiBase
   lo <- BwOr x yLo3shifted
   tile <- ReadVmem HiLo { hi, lo }
-  pure (Just (PatL,tile))
+  pure (Just (PatR,tile)) -- TODO: L/R which one?
 
 
 pickViaCHR :: XY (Byte p) -> Eff p (Maybe (Pat, Byte p))
