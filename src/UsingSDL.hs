@@ -31,7 +31,7 @@ runTerm verb maxM nesFile the_effect = do
   let
     loop :: TimeSpec -> Int -> Behaviour -> IO ()
     loop time0 n = \case
-      Log{} -> undefined -- TODO
+      Log s b -> do putStrLn s; loop time0 n b
       Poll f -> loop time0 n (f keys)
       Render frame report behaviour -> do
         let h = Frame.toFrameHash frame
