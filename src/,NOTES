@@ -1,6 +1,18 @@
 
-Add sim control: pause on space?
-Speed up! (do I need compilation already!)
-Abstract concrete Bytes/Words for hex print
+Explore diff colours vs. hnes. read hnes code
+honesty/hnes: compute frame hash fingerprint.
 
-Explore diff colours vs. hnes
+Sim control: pause on space? do control in effect?
+Keys vs buttons.
+
+Concrete types for Bit/Byte(v)/Addr; pp hex; conversion
+Phase Addr; effects for conv from/to HiLo
+Typed primitives (like zagain)
+
+Speed up emulation by compilation from effect to (typed?) Code.
+
+Reduce Vmem read by x8 for BG rendering. Regs to save tile bytes. And att bytes.
+Sprite evaluation; test via OAM dump from honesty. pick 8 of 64 sprites per line.
+
+Cleanup Vmem MM; same for read/write
+6502 ops
