@@ -58,7 +58,7 @@ doPix mode xy@XY{x,y} = do
       EmitPixel xy zero
     Just (pat,tile) -> do
       (b,c) <- getAttributeTableBits coarse
-      d <- getTilePlaneBit pat Plane2 tile fine -- TODO: rename Plane0
+      d <- getTilePlaneBit pat Plane2 tile fine
       e <- getTilePlaneBit pat Plane1 tile fine
       col <- colourOfPlanes (b,c) (d,e)
       EmitPixel xy col
