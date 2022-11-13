@@ -11,7 +11,7 @@ import qualified Data.Map as Map (fromList,toList)
 import qualified NameTableTestData (dk50,dk400)
 import qualified PPU (effect,Mode(..))
 
-palDataX4 :: Map Int Word8
+palDataX4 :: Map Int Word8 -- dummy colour data for showing CHR
 palDataX4 = Map.fromList
   [ (0, 63) , (1, 1) , (2, 44) , (3, 6)
   , (4, 63) , (5, 1) , (6, 44) , (7, 6)
@@ -19,28 +19,17 @@ palDataX4 = Map.fromList
   , (12, 63) , (13, 1) , (14, 44) , (15, 6)
   ]
 
-honestyPalDumpDK :: Map Int Word8
-honestyPalDumpDK = Map.fromList
-  [ (0,0x0f)
-  , (1,0x2c)
-  , (2,0x38)
-  , (3,0x12)
-  , (4,0x0f)
-  , (5,0x27)
-  , (6,0x27)
-  , (7,0x27)
-  , (8,0x0f)
-  , (9,0x30)
-  , (10,0x30)
-  , (11,0x30)
-  , (12,0x0f)
-  , (17,0x25)
-  ]
+_dk50pal :: Map Int Word8
+_dk50pal = Map.fromList [(0,0x0f),(1,0x2c),(2,0x38),(3,0x12),(4,0x0f),(5,0x27),(6,0x27),(7,0x27),(8,0x0f),(9,0x30),(10,0x30),(11,0x30),(12,0x0f),(17,0x25)]
+
+_dk400pal :: Map Int Word8
+_dk400pal = Map.fromList [(0,0x0f),(1,0x15),(2,0x2c),(3,0x12),(4,0x0f),(5,0x27),(6,0x02),(7,0x17),(8,0x0f),(9,0x30),(10,0x36),(11,0x06),(12,0x0f),(13,0x30),(14,0x2c),(15,0x24),(17,0x02),(18,0x36),(19,0x16),(21,0x30),(22,0x27),(23,0x24),(25,0x16),(26,0x30),(27,0x37),(29,0x06),(30,0x27),(31,0x02)]
+
 
 dk50 :: Eff p ()
 dk50 = do
   doKeys
-  setupPalData palDataX4
+  setupPalData _dk50pal -- palDataX4
   setupNameTableTD NameTableTestData.dk50
   PPU.effect PPU.Mode_NameTable
 
@@ -48,7 +37,7 @@ dk400 :: Eff p ()
 dk400 = do
   doKeys
   setupNameTableTD NameTableTestData.dk400
-  setupPalData honestyPalDumpDK --palDataX4
+  setupPalData _dk400pal
   PPU.effect PPU.Mode_NameTable
 
 showCHR :: Eff p () -- show the tiles in PatL/PatR
