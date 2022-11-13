@@ -81,7 +81,8 @@ pickViaNameTable coarse = do
   yHi2 <- y `ShiftR` 3
   hi <- BwOr yHi2 ntHiBase
   lo <- BwOr x yLo3shifted
-  tile <- ReadVmem HiLo { hi, lo }
+  a <- MakeAddr HiLo { hi, lo }
+  tile <- ReadVmem a
   pure (Just (pat,tile))
 
 pickViaCHR :: XY (Byte p) -> Eff p (Maybe (Pat, Byte p))
@@ -113,7 +114,7 @@ getAttributeTableBits coarse = do
     xy <- BwOr x432 y432LLL
     base <- LitB 0xc0
     BwOr base xy
-  let a = HiLo { hi, lo }
+  a <- MakeAddr HiLo { hi, lo }
   v <- ReadVmem a
   bx1 <- If x1
   by1 <- If y1
@@ -145,10 +146,11 @@ getTilePlaneBit pat plane tile fine = do
     n1 <- pure fineY
     n <- BwOr n1 planeOffset
     BwOr shifted n
-  byte <- ReadVmem HiLo { hi, lo }
+  a <- MakeAddr HiLo { hi, lo }
+  v <- ReadVmem a
   seven <- LitB 7
   fineXflipped <- seven `SubtractB` fineX -- [0..7] --> [7..0]
-  TestBit byte fineXflipped
+  TestBit v fineXflipped
 
 colourOfPlanes :: (Bit p,Bit p) -> (Bit p,Bit p) -> Eff p (Byte p)
 colourOfPlanes (b,c) (d,e) = do
@@ -156,7 +158,8 @@ colourOfPlanes (b,c) (d,e) = do
   let a = z -- Background
   hi <- LitB 0x3f
   lo <- MakeByte (z,z,z,a,b,c,d,e)
-  ReadVmem HiLo { hi, lo }
+  a <- MakeAddr HiLo { hi, lo }
+  ReadVmem a
 
 ntHiFromStatus :: NT -> Eff p (Byte p)
 ntHiFromStatus nt = LitB $ case nt of

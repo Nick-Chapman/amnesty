@@ -48,7 +48,7 @@ parseCommandLine = loop config0
       "dk400":xs -> loop acc { path = dkPath, effect = System.dk400 } xs
 
       "-max":n:xs -> loop acc { maxFrame = Just (read n) } xs
-      "-reg":xs -> loop acc { mode = Regression } xs
+      "-reg":xs -> loop acc { mode = Regression } xs -- TODO: just use -max1
 
       path:xs -> loop acc { path } xs
 

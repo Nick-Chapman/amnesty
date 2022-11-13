@@ -1,12 +1,10 @@
 
 module System (showCHR,dk50,dk400) where
 
-import Data.Bits ((.&.),shiftR)
 import Data.Map (Map)
-import Data.Word (Word16)
 import Data.Word (Word8)
-import Eff (Eff(..),Byte)
-import Types (Key(..),Reg(..),HiLo(..))
+import Eff (Eff(..))
+import Types (Key(..),Reg(..))
 import qualified Data.Map as Map (fromList,toList)
 import qualified NameTableTestData (dk50,dk400)
 import qualified PPU (effect,Mode(..))
@@ -52,28 +50,21 @@ setupPalData xs = do
   sequence_
     [ do
         v <- LitB v
-        a <- litHL (0x3f00 + fromIntegral a)
+        a <- LitA (0x3f00 + fromIntegral i)
         WriteVmem a v
     |
-      (a,v) <- Map.toList xs
+      (i,v) <- Map.toList xs
     ]
 
 setupNameTableTD :: [Word8] -> Eff p ()
 setupNameTableTD testData = do
   sequence_
     [ do
-        a <- litHL (0x2000 + fromIntegral i)
+        a <- LitA (0x2000 + fromIntegral i)
         b <- LitB b
         WriteVmem a b
     | (i,b) <- zip [0::Int ..] testData
     ]
-
-litHL :: Word16 -> Eff p (HiLo (Byte p))
-litHL w16 = do
-  hi <- LitB (fromIntegral (w16 `shiftR` 8))
-  lo <- LitB (fromIntegral (w16 .&. 255))
-  pure HiLo {hi,lo}
-
 
 doKeys :: Eff p ()
 doKeys = do

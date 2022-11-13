@@ -5,14 +5,14 @@ module Eff
   ) where
 
 import Control.Monad (ap,liftM)
-import Data.Word (Word8)
+import Data.Word (Word8,Word16)
 import Types (Key,XY,HiLo,Reg)
 
 class ( Show (Byte p)
       ) => Phase p where
   type Bit p
   type Byte p
-  -- TODO: type Addr p
+  type Addr p
 
 data Eff p x where
   Ret :: x -> Eff p x
@@ -23,18 +23,23 @@ data Eff p x where
   IsPressed :: Key -> Eff p Bool
   EmitPixel :: XY (Byte p) -> Byte p -> Eff p ()
 
-  WriteVmem :: HiLo (Byte p) -> Byte p -> Eff p ()
-  ReadVmem :: HiLo (Byte p) -> Eff p (Byte p)
+  WriteVmem :: Addr p -> Byte p -> Eff p ()
+  ReadVmem :: Addr p -> Eff p (Byte p)
+
   SetReg :: Reg -> Byte p -> Eff p ()
   GetReg :: Reg -> Eff p (Byte p)
+
+  MakeAddr :: HiLo (Byte p) -> Eff p (Addr p)
+  SplitAddr :: Addr p -> Eff p (HiLo (Byte p))
 
   Bit0 :: Eff p (Bit p)
   Bit1 :: Eff p (Bit p)
 
   MakeByte :: (Bit p, Bit p, Bit p, Bit p, Bit p, Bit p, Bit p, Bit p) -> Eff p (Byte p)
 
-
   LitB :: Word8 -> Eff p (Byte p)
+  LitA :: Word16 -> Eff p (Addr p)
+
   TestBit :: Byte p -> Byte p -> Eff p (Bit p)
   EqB :: Byte p -> Byte p -> Eff p (Bit p)
   AddB :: Byte p -> Byte p -> Eff p (Byte p)

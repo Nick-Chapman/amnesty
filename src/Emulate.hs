@@ -19,6 +19,7 @@ data DuringEmulation
 instance Phase DuringEmulation where
   type Bit DuringEmulation = Bool
   type Byte DuringEmulation = Word8
+  type Addr DuringEmulation = Word16
 
 type Effect a = Eff DuringEmulation a
 
@@ -54,15 +55,15 @@ inner c@Context{chr1,keys} s@State{vmemReadCount,vramWriteCount} e k = case e of
     k s (key `elem` pressed)
   EmitPixel xy byte -> do
     k (emitPixel xy (makeCol6 byte) s) ()
+
   ReadVmem a -> do
     let v = readVmem chr1 s a
-    --Log (printf "ReadVmem(%07d): %s --> %s" vmemReadCount (_ppHL a) (_pp8 v)) $ do
+    --Log (printf "ReadVmem(%07d): %s --> %s" vmemReadCount (show a) (show  v)) $ do
     k s { vmemReadCount = 1 + vmemReadCount } v
-  WriteVmem HiLo{hi,lo} v -> do
+  WriteVmem a v -> do
     -- TODO: share same MM abstraction for read/write vmem
     let State{vram} = s
-    let a :: Word16 = (fromIntegral hi `shiftL` 8) .|. fromIntegral lo
-    --Log (printf "WriteVmem(%07d): %s := %s" vmemReadCount (_pp16 a) (_pp8 v)) $ do
+    --Log (printf "WriteVmem(%07d): %s := %s" vmemReadCount (show a) (show v)) $ do
     k s { vramWriteCount = vramWriteCount + 1
         , vram = Map.insert a v vram
         } ()
@@ -72,6 +73,9 @@ inner c@Context{chr1,keys} s@State{vmemReadCount,vramWriteCount} e k = case e of
   SetReg r b -> do
     let State{regs} = s
     k s { regs = Map.insert r b regs } ()
+
+  MakeAddr HiLo{hi,lo} -> k s (fromIntegral hi `shiftL` 8 .|. fromIntegral lo)
+  SplitAddr a -> undefined a
 
   Bit0 -> k s False
   Bit1 -> k s True
@@ -88,6 +92,8 @@ inner c@Context{chr1,keys} s@State{vmemReadCount,vramWriteCount} e k = case e of
           0
     k s byte
   LitB n -> do
+    k s n
+  LitA n -> do
     k s n
   TestBit b n -> do
     k s (b `testBit` fromIntegral n)
@@ -139,9 +145,8 @@ resetState state = state
   , vramWriteCount = 0
   }
 
-readVmem :: Rom8k -> State -> HiLo Word8 -> Word8
-readVmem chr1 State{vram} HiLo{hi,lo} = do
-  let a :: Word16 = (fromIntegral hi `shiftL` 8) .|. fromIntegral lo
+readVmem :: Rom8k -> State -> Word16 -> Word8
+readVmem chr1 State{vram} a = do
   if
     | a < 0x2000 -> Rom8k.read chr1 a
     | a < 0x3000 ->
