@@ -48,6 +48,8 @@ inner c@Context{chr1,keys} s@State{vmemReadCount,vramWriteCount} e k = case e of
 
   Ret x -> k s x
   Bind e f -> inner c s e $ \s a -> inner c s (f a) k
+
+  Assert mes b -> if not b then error mes else k s ()
   If b -> k s b
   Repeat n eff -> inner c s (sequence_ [ eff | _ <- [0::Int .. n-1] ]) k
   IsPressed key -> k s (key `elem` pressed keys)

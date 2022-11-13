@@ -17,6 +17,7 @@ class ( Show (Byte p)
 data Eff p x where
   Ret :: x -> Eff p x
   Bind :: Eff p x -> (x -> Eff p y) -> Eff p y
+  Assert :: String -> Bit p -> Eff p ()
   If :: Bit p -> Eff p Bool
   Repeat :: Int -> Eff p () -> Eff p ()
   IsPressed :: Key -> Eff p Bool

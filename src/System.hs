@@ -7,15 +7,7 @@ import Eff (Eff(..))
 import Types (Key(..),Reg(..))
 import qualified Data.Map as Map (fromList,toList)
 import qualified NameTableTestData (dk50,dk400)
-import qualified PPU (effect,Mode(..))
-
-palDataX4 :: Map Int Word8 -- dummy colour data for showing CHR
-palDataX4 = Map.fromList
-  [ (0, 63) , (1, 1) , (2, 44) , (3, 6)
-  , (4, 63) , (5, 1) , (6, 44) , (7, 6)
-  , (8, 63) , (9, 1) , (10, 44) , (11, 6)
-  , (12, 63) , (13, 1) , (14, 44) , (15, 6)
-  ]
+import qualified PPU (renderEffect,showPatTables)
 
 _dk50pal :: Map Int Word8
 _dk50pal = Map.fromList [(0,0x0f),(1,0x2c),(2,0x38),(3,0x12),(4,0x0f),(5,0x27),(6,0x27),(7,0x27),(8,0x0f),(9,0x30),(10,0x30),(11,0x30),(12,0x0f),(17,0x25)]
@@ -27,22 +19,21 @@ _dk400pal = Map.fromList [(0,0x0f),(1,0x15),(2,0x2c),(3,0x12),(4,0x0f),(5,0x27),
 dk50 :: Eff p ()
 dk50 = do
   doKeys
-  setupPalData _dk50pal -- palDataX4
+  setupPalData _dk50pal
   setupNameTableTD NameTableTestData.dk50
-  PPU.effect PPU.Mode_NameTable
+  PPU.renderEffect
 
 dk400 :: Eff p ()
 dk400 = do
   doKeys
   setupNameTableTD NameTableTestData.dk400
   setupPalData _dk400pal
-  PPU.effect PPU.Mode_NameTable
+  PPU.renderEffect
 
 showCHR :: Eff p () -- show the tiles in PatL/PatR
 showCHR = do
   doKeys
-  setupPalData palDataX4
-  PPU.effect PPU.Mode_CHR
+  PPU.showPatTables
 
 
 setupPalData :: Map Int Word8 -> Eff p ()

@@ -1,20 +1,18 @@
 
-module PPU (effect,Mode(..)) where
+module PPU (renderEffect,showPatTables) where
 
 import Eff (Eff(..),Bit,Byte)
 import Types (XY(..),HiLo(..),Reg(..))
 
-data Mode = Mode_CHR | Mode_NameTable
-
-effect :: Mode -> Eff p ()
-effect mode = do
+renderEffect :: Eff p ()
+renderEffect = do
   LitB 0 >>= SetReg RegScanY
   Repeat 240 $ do
     y <- getAndInc RegScanY
     -- no need to zero X as it initializes to 0, and wraps to 0
     Repeat 256 $ do
       x <- getAndInc RegScanX
-      doPix mode XY {x,y}
+      doPix XY {x,y}
 
 getAndInc :: Reg -> Eff p (Byte p)
 getAndInc r = do
@@ -43,34 +41,29 @@ statusDev = do
   let pat = if b0 then PatR else PatL
   pure Status { nt, pat }
 
-doPix :: Mode -> XY (Byte p) -> Eff p ()
-doPix mode xy@XY{x,y} = do
+doPix :: XY (Byte p) -> Eff p ()
+doPix xy@XY{x,y} = do
+  --EqB x y >>= Assert "eq-x-y" -- TODO: just testin assert works
+
   HiLo{hi=coarseX,lo=fineX} <- splitCourseFine x
   HiLo{hi=coarseY,lo=fineY} <- splitCourseFine y
   let coarse = XY {x = coarseX, y = coarseY}
   let fine = XY {x = fineX, y = fineY}
-  zero <- LitB 0 -- light grey
-  (case mode of
-    Mode_CHR -> pickViaCHR
-    Mode_NameTable -> pickViaNameTable
-    ) coarse >>= \case
-    Nothing -> do
-      EmitPixel xy zero
-    Just (pat,tile) -> do
-      (b,c) <- getAttributeTableBits coarse
-      d <- getTilePlaneBit pat Plane2 tile fine
-      e <- getTilePlaneBit pat Plane1 tile fine
-      col <- colourOfPlanes (b,c) (d,e)
-      EmitPixel xy col
-  where
-    splitCourseFine :: Byte p -> Eff p (HiLo (Byte p))
-    splitCourseFine b = do
-      mask <- LitB 0x7
-      lo <- BwAnd b mask -- 0..7
-      hi <- ShiftR b 3 -- 0..31
-      pure HiLo {hi,lo}
+  (pat,tile) <- pickViaNameTable coarse
+  (b,c) <- getAttributeTableBits coarse
+  d <- getTilePlaneBit pat Plane2 tile fine
+  e <- getTilePlaneBit pat Plane1 tile fine
+  col <- colourOfPlanes (b,c) (d,e)
+  EmitPixel xy col
 
-pickViaNameTable :: XY (Byte p) -> Eff p (Maybe (Pat, Byte p))
+splitCourseFine :: Byte p -> Eff p (HiLo (Byte p))
+splitCourseFine b = do
+  mask <- LitB 0x7
+  lo <- BwAnd b mask -- 0..7
+  hi <- ShiftR b 3 -- 0..31
+  pure HiLo {hi,lo}
+
+pickViaNameTable :: XY (Byte p) -> Eff p (Pat, Byte p)
 pickViaNameTable coarse = do
   Status{nt,pat} <- statusDev
   ntHiBase <- ntHiFromStatus nt
@@ -83,21 +76,7 @@ pickViaNameTable coarse = do
   lo <- BwOr x yLo3shifted
   a <- MakeAddr HiLo { hi, lo }
   tile <- ReadVmem a
-  pure (Just (pat,tile))
-
-pickViaCHR :: XY (Byte p) -> Eff p (Maybe (Pat, Byte p))
-pickViaCHR coarse = do
-  let XY{x,y} = coarse
-  HiLo{hi=hx,lo=lx} <- nibbles x
-  HiLo{hi=hy,lo=ly} <- nibbles y
-  zero <- LitB 0
-  showLeft <- EqB hx zero >>= If
-  let pat = if showLeft then PatL else PatR
-  yon <- EqB hy zero >>= If
-  if not yon then pure Nothing else do
-    shifted <- ly `ShiftL` 4
-    tile <- BwOr shifted lx
-    pure (Just (pat,tile))
+  pure (pat,tile)
 
 getAttributeTableBits :: XY (Byte p) -> Eff p (Bit p, Bit p)
 getAttributeTableBits coarse = do
@@ -175,3 +154,35 @@ nibbles b = do
   hi <- ShiftR b 4 -- 0..15
   pure HiLo {hi,lo}
 
+
+----------------------------------------------------------------------
+
+showPatTables :: Eff p ()
+showPatTables = do
+  LitB 0 >>= SetReg RegScanY
+  Repeat 240 $ do
+    y <- getAndInc RegScanY
+    Repeat 256 $ do
+      x <- getAndInc RegScanX
+      let xy = XY {x,y}
+      HiLo{hi=coarseX,lo=fineX} <- splitCourseFine x
+      HiLo{hi=coarseY,lo=fineY} <- splitCourseFine y
+      let fine = XY {x = fineX, y = fineY}
+      HiLo{hi=hx,lo=lx} <- nibbles coarseX
+      HiLo{hi=hy,lo=ly} <- nibbles coarseY
+      zero <- LitB 0
+      showLeft <- EqB hx zero >>= If
+      let pat = if showLeft then PatL else PatR
+      yon <- EqB hy zero >>= If
+      if not yon then EmitPixel xy zero else do
+        shifted <- ly `ShiftL` 4
+        tile <- BwOr shifted lx
+        d <- getTilePlaneBit pat Plane2 tile fine >>= If
+        e <- getTilePlaneBit pat Plane1 tile fine >>= If
+        col <- LitB $
+          case (d,e) of
+            (False,False) -> 63
+            (False,True) -> 1
+            (True,False) -> 44
+            (True,True) -> 6
+        EmitPixel xy col
