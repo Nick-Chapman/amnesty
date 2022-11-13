@@ -19,26 +19,22 @@ data Eff p x where
   Bind :: Eff p x -> (x -> Eff p y) -> Eff p y
   If :: Bit p -> Eff p Bool
   Repeat :: Int -> Eff p () -> Eff p ()
-
   IsPressed :: Key -> Eff p Bool
   EmitPixel :: XY (Byte p) -> Byte p -> Eff p ()
-
   WriteVmem :: Addr p -> Byte p -> Eff p ()
   ReadVmem :: Addr p -> Eff p (Byte p)
-
   SetReg :: Reg -> Byte p -> Eff p ()
   GetReg :: Reg -> Eff p (Byte p)
+  Bit0 :: Eff p (Bit p)
+  Bit1 :: Eff p (Bit p)
+  LitB :: Word8 -> Eff p (Byte p)
+  LitA :: Word16 -> Eff p (Addr p)
 
   MakeAddr :: HiLo (Byte p) -> Eff p (Addr p)
   SplitAddr :: Addr p -> Eff p (HiLo (Byte p))
-
-  Bit0 :: Eff p (Bit p)
-  Bit1 :: Eff p (Bit p)
-
   MakeByte :: (Bit p, Bit p, Bit p, Bit p, Bit p, Bit p, Bit p, Bit p) -> Eff p (Byte p)
-
-  LitB :: Word8 -> Eff p (Byte p)
-  LitA :: Word16 -> Eff p (Addr p)
+  ShiftL :: Byte p -> Int -> Eff p (Byte p)
+  ShiftR :: Byte p -> Int -> Eff p (Byte p)
 
   TestBit :: Byte p -> Byte p -> Eff p (Bit p)
   EqB :: Byte p -> Byte p -> Eff p (Bit p)
@@ -46,8 +42,6 @@ data Eff p x where
   SubtractB :: Byte p -> Byte p -> Eff p (Byte p)
   BwAnd :: Byte p -> Byte p -> Eff p (Byte p)
   BwOr :: Byte p -> Byte p -> Eff p (Byte p)
-  ShiftL :: Byte p -> Int -> Eff p (Byte p)
-  ShiftR :: Byte p -> Int -> Eff p (Byte p)
 
 instance Functor (Eff p) where fmap = liftM
 instance Applicative (Eff p) where pure = return; (<*>) = ap

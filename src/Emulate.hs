@@ -3,7 +3,6 @@ module Emulate (Effect,emulate) where
 
 import Behaviour (Behaviour(..),Report(..))
 import Col6 (Col6,makeCol6)
-import Data.Bits (testBit,(.&.),(.|.),shiftR,shiftL)
 import Data.Map (Map)
 import Data.Word (Word8,Word16)
 import Eff (Phase(..),Eff(..))
@@ -11,9 +10,10 @@ import Frame (makeFrame)
 import NesFile (NesFile(..))
 import Rom8k (Rom8k)
 import Text.Printf (printf)
-import Types (XY(..),Keys(..),HiLo(..),Reg(..))
+import Types (XY(..),Keys(..),Reg(..))
 import qualified Data.Map as Map (empty,insert,lookup,fromList)
 import qualified Rom8k (read)
+import qualified Primitive as Prim
 
 data DuringEmulation
 instance Phase DuringEmulation where
@@ -43,18 +43,15 @@ data Context = Context
   , keys :: Keys
   }
 
-inner :: Context -> State -> Effect b -> (State -> b -> Behaviour) -> Behaviour
+inner :: forall e. Context -> State -> Effect e -> (State -> e -> Behaviour) -> Behaviour
 inner c@Context{chr1,keys} s@State{vmemReadCount,vramWriteCount} e k = case e of
+
   Ret x -> k s x
   Bind e f -> inner c s e $ \s a -> inner c s (f a) k
   If b -> k s b
-  Repeat n eff ->
-    inner c s (sequence_ [ eff | _ <- [0::Int .. n-1] ]) k
-  IsPressed key -> do
-    let Keys{pressed} = keys
-    k s (key `elem` pressed)
-  EmitPixel xy byte -> do
-    k (emitPixel xy (makeCol6 byte) s) ()
+  Repeat n eff -> inner c s (sequence_ [ eff | _ <- [0::Int .. n-1] ]) k
+  IsPressed key -> k s (key `elem` pressed keys)
+  EmitPixel xy byte -> k (emitPixel xy (makeCol6 byte) s) ()
 
   ReadVmem a -> do
     let v = readVmem chr1 s a
@@ -67,6 +64,7 @@ inner c@Context{chr1,keys} s@State{vmemReadCount,vramWriteCount} e k = case e of
     k s { vramWriteCount = vramWriteCount + 1
         , vram = Map.insert a v vram
         } ()
+
   GetReg r -> do
     let State{regs} = s
     k s (maybe 0 id $ Map.lookup r regs)
@@ -74,43 +72,30 @@ inner c@Context{chr1,keys} s@State{vmemReadCount,vramWriteCount} e k = case e of
     let State{regs} = s
     k s { regs = Map.insert r b regs } ()
 
-  MakeAddr HiLo{hi,lo} -> k s (fromIntegral hi `shiftL` 8 .|. fromIntegral lo)
-  SplitAddr a -> undefined a
-
   Bit0 -> k s False
   Bit1 -> k s True
-  MakeByte (a,b,c,d,e,f,g,h) -> do
-    let byte =
-          (if a then 128 else 0) .|.
-          (if b then  64 else 0) .|.
-          (if c then  32 else 0) .|.
-          (if d then  16 else 0) .|.
-          (if e then   8 else 0) .|.
-          (if f then   4 else 0) .|.
-          (if g then   2 else 0) .|.
-          (if h then   1 else 0) .|.
-          0
-    k s byte
-  LitB n -> do
-    k s n
-  LitA n -> do
-    k s n
-  TestBit b n -> do
-    k s (b `testBit` fromIntegral n)
-  EqB b1 b2 -> do
-    k s (b1 == b2)
-  AddB a b -> do
-    k s (a+b)
-  SubtractB a b -> do
-    k s (a-b)
-  BwAnd b1 b2 -> do
-    k s (b1 .&. b2)
-  BwOr b1 b2 -> do
-    k s (b1 .|. b2)
-  ShiftL b n -> do
-    k s (b `shiftL` n)
-  ShiftR b n -> do
-    k s (b `shiftR` n)
+  LitB n -> k s n
+  LitA n -> k s n
+
+  MakeAddr x -> prim1 Prim.MakeAddr x
+  SplitAddr x -> prim1 Prim.SplitAddr x
+  MakeByte x -> prim1 Prim.MakeByte x
+
+  TestBit x y -> prim2 Prim.TestBit x y
+  EqB x y -> prim2 Prim.EqB x y
+  AddB x y -> prim2 Prim.AddB x y
+  SubtractB x y -> prim2 Prim.SubtractB x y
+  BwAnd x y  -> prim2 Prim.BwAnd x y
+  BwOr x y -> prim2 Prim.BwOr x y
+  ShiftL x y -> prim2 Prim.ShiftL x y
+  ShiftR x y -> prim2 Prim.ShiftR x y
+
+  where
+    prim1 :: forall x. Prim.P1 x e -> x -> Behaviour
+    prim1 p1 x = k s (Prim.evalP1 p1 x)
+
+    prim2 :: forall x y. Prim.P2 x y e -> x -> y -> Behaviour
+    prim2 p2 x y = k s (Prim.evalP2 p2 x y)
 
 
 data State = State

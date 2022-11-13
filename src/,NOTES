@@ -5,7 +5,6 @@ Sim control: pause on space? do control in effect?
 Keys vs buttons.
 
 Concrete types for Bit/Byte(v)/Addr; pp hex; conversion
-Typed primitives (like zagain)
 
 Speed up emulation by compilation from effect to (typed?) Code.
 
