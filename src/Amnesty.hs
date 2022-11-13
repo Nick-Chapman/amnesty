@@ -31,7 +31,7 @@ config0 = Config
   , effect = System.showCHR
   }
 
-data Mode = SDL | NoPic | Regression
+data Mode = SDL | NoPic
 
 parseCommandLine :: [String] -> Config
 parseCommandLine = loop config0
@@ -48,7 +48,7 @@ parseCommandLine = loop config0
       "dk400":xs -> loop acc { path = dkPath, effect = System.dk400 } xs
 
       "-max":n:xs -> loop acc { maxFrame = Just (read n) } xs
-      "-reg":xs -> loop acc { mode = Regression } xs -- TODO: just use -max1
+      "-reg":xs -> loop acc { mode = NoPic, maxFrame = Just 1 } xs
 
       path:xs -> loop acc { path } xs
 
@@ -60,10 +60,5 @@ run Config{path,verb,mode,maxFrame,effect} = do
   nesFile <- NesFile.load path
   let _ = print nesFile
   case mode of
-    Regression ->
-      UsingSDL.runTerm verb (Just 1) nesFile effect
-    NoPic ->
-      UsingSDL.runTerm verb maxFrame nesFile effect
-    SDL ->
-      UsingSDL.runSDL verb nesFile effect
-  pure ()
+    NoPic -> UsingSDL.runTerm verb maxFrame nesFile effect
+    SDL ->   UsingSDL.runSDL  verb          nesFile effect
