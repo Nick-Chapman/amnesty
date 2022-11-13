@@ -76,7 +76,7 @@ runSDL verb nesfile the_effect = do
   let
     loop :: TimeSpec -> World -> Behaviour -> IO ()
     loop time world = \case
-      Log{} -> undefined -- TODO
+      Log s b -> do putStrLn s; loop time world b
 
       Poll f -> do
         events <- SDL.pollEvents
@@ -168,6 +168,7 @@ keyMapTable = Map.fromList ys
     keyedBy = \case
       KeyZ -> [SDL.KeycodeZ]
       KeyX -> [SDL.KeycodeX]
+      KeyY -> [SDL.KeycodeY]
       KeyN -> [SDL.KeycodeN]
       KeyP -> [SDL.KeycodeP]
       KeyEnter -> [SDL.KeycodeReturn]

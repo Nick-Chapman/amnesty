@@ -24,6 +24,7 @@ data Key -- TODO: rename Buttons, corresponding to NES controller
   | KeyShift
   | KeyZ
   | KeyX
+  | KeyY
   | KeyN -- select nametable
   | KeyP -- select/flip pat-table
   deriving (Eq,Ord,Enum,Bounded)
@@ -34,6 +35,7 @@ instance Show Key where
     KeyShift -> "S"
     KeyZ -> "z"
     KeyX -> "x"
+    KeyY -> "y"
     KeyN -> "n"
     KeyP -> "p"
 
@@ -52,6 +54,6 @@ instance Show a => Show (RGB a) where show RGB{r,g,b} = "RGB" ++ show (r,g,b)
 data HiLo a = HiLo { hi :: a, lo :: a } deriving (Eq,Ord,Functor,Show)
 
 data Reg
-  = RegZ | RegX | RegN | RegP -- driven by keye for dev/debug
+  = RegZ | RegX | RegY | RegN | RegP -- driven by keys for dev/debug
   | RegScanX | RegScanY
   deriving (Eq,Ord,Show)

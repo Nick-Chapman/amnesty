@@ -11,16 +11,16 @@ import qualified Data.Map as Map (fromList,toList)
 import qualified NameTableTestData (dk50,dk400)
 import qualified PPU (effect,Mode(..))
 
-palData :: Map Int Word8
-palData = Map.fromList
-  [ (0, 63)
-  , (1, 1)
-  , (2, 44)
-  , (3, 6)
+palDataX4 :: Map Int Word8
+palDataX4 = Map.fromList
+  [ (0, 63) , (1, 1) , (2, 44) , (3, 6)
+  , (4, 63) , (5, 1) , (6, 44) , (7, 6)
+  , (8, 63) , (9, 1) , (10, 44) , (11, 6)
+  , (12, 63) , (13, 1) , (14, 44) , (15, 6)
   ]
 
-_xx :: Map Int Word8
-_xx = Map.fromList
+honestyPalDumpDK :: Map Int Word8
+honestyPalDumpDK = Map.fromList
   [ (0,0x0f)
   , (1,0x2c)
   , (2,0x38)
@@ -40,21 +40,21 @@ _xx = Map.fromList
 dk50 :: Eff p ()
 dk50 = do
   doKeys
-  setupPalData palData
+  setupPalData palDataX4
   setupNameTableTD NameTableTestData.dk50
   PPU.effect PPU.Mode_NameTable
 
 dk400 :: Eff p ()
 dk400 = do
   doKeys
-  setupPalData palData
   setupNameTableTD NameTableTestData.dk400
+  setupPalData honestyPalDumpDK --palDataX4
   PPU.effect PPU.Mode_NameTable
 
 showCHR :: Eff p () -- show the tiles in PatL/PatR
 showCHR = do
   doKeys
-  setupPalData palData
+  setupPalData palDataX4
   PPU.effect PPU.Mode_CHR
 
 
@@ -89,6 +89,7 @@ litHL w16 = do
 doKeys :: Eff p ()
 doKeys = do
   doKey KeyX RegX
+  doKey KeyY RegY
   doKey KeyZ RegZ
   doKey KeyN RegN
   doKey KeyP RegP

@@ -1,13 +1,4 @@
 
-Dump nametable for game-attract screen and level 1 from honesty
-Run dumped nametable in amnesty, for visual comparison
-PPU generate picture using pallet info in nametable(attribute part)
-
+Fix wrong colours by visual comparison with honesty/hnes
 Speed up! (do I need compilation already!)
-
-Use regs to store key-last-state and so detect edges.
-Key/Reg to control other features such as flip.
-AvsB reg when refactoring code to visually (+via screen hash) check old vs new
-
-Tile-map display shows alpha-tiles as flipped. expected or bug?
-
+Abstract concrete Bytes/Words for hex print

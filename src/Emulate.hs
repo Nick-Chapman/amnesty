@@ -55,13 +55,16 @@ inner c@Context{chr1,keys} s@State{vmemReadCount,vramWriteCount} e k = case e of
   EmitPixel xy byte -> do
     k (emitPixel xy (makeCol6 byte) s) ()
   ReadVmem a -> do
-    --Log (printf "ReadVmem(%07d): %s" vmemReadCount (show a)) $ do
-    k s { vmemReadCount = 1 + vmemReadCount } (readVmem chr1 s a)
-  WriteVmem HiLo{hi,lo} b -> do
+    let v = readVmem chr1 s a
+    --Log (printf "ReadVmem(%07d): %s --> %s" vmemReadCount (_ppHL a) (_pp8 v)) $ do
+    k s { vmemReadCount = 1 + vmemReadCount } v
+  WriteVmem HiLo{hi,lo} v -> do
+    -- TODO: share same MM abstraction for read/write vmem
     let State{vram} = s
     let a :: Word16 = (fromIntegral hi `shiftL` 8) .|. fromIntegral lo
+    --Log (printf "WriteVmem(%07d): %s := %s" vmemReadCount (_pp16 a) (_pp8 v)) $ do
     k s { vramWriteCount = vramWriteCount + 1
-        , vram = Map.insert a b vram
+        , vram = Map.insert a v vram
         } ()
   GetReg r -> do
     let State{regs} = s
@@ -71,7 +74,7 @@ inner c@Context{chr1,keys} s@State{vmemReadCount,vramWriteCount} e k = case e of
     k s { regs = Map.insert r b regs } ()
 
   Bit0 -> k s False
-  Bit1 -> undefined
+  Bit1 -> k s True
   MakeByte (a,b,c,d,e,f,g,h) -> do
     let byte =
           (if a then 128 else 0) .|.
