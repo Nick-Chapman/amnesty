@@ -1,4 +1,6 @@
 
-Fix wrong colours by visual comparison with honesty/hnes
+Add sim control: pause on space?
 Speed up! (do I need compilation already!)
 Abstract concrete Bytes/Words for hex print
+
+Explore diff colours vs. hnes

@@ -56,11 +56,10 @@ doPix mode xy@XY{x,y} = do
     ) coarse >>= \case
     Nothing -> do
       EmitPixel xy zero
-    --Just (PatR,_) -> do EmitPixel xy zero -- ignore PatR
     Just (pat,tile) -> do
       (b,c) <- getAttributeTableBits coarse
-      d <- getTilePlaneBit pat Plane1 tile fine
-      e <- getTilePlaneBit pat Plane2 tile fine
+      d <- getTilePlaneBit pat Plane2 tile fine -- TODO: rename Plane0
+      e <- getTilePlaneBit pat Plane1 tile fine
       col <- colourOfPlanes (b,c) (d,e)
       EmitPixel xy col
   where

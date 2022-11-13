@@ -141,7 +141,9 @@ interestingOf = \case
     let code = SDL.keysymKeycode (SDL.keyboardEventKeysym ke)
     let motion = SDL.keyboardEventKeyMotion ke
     case (code,motion) of
-      (SDL.KeycodeEscape,SDL.Released) -> [Quit]
+      (SDL.KeycodeEscape,SDL.Pressed) -> [Quit]
+      (SDL.KeycodeQ,SDL.Pressed) -> [Quit]
+      -- TODO: Pause
       _ ->
         case Map.lookup code keyMapTable of
           Nothing -> []
