@@ -30,8 +30,9 @@ data Status = Status
 data NT = NT0 | NT1 | NT2 | NT3 -- which nametable to show
 data Pat = PatL | PatR
 
-statusDev :: Eff p Status -- status for dev; driven from keys
-statusDev = do
+statusDev :: Eff p Status
+statusDev = pure Status { nt = NT0, pat = PatR }
+{-statusDev = do  -- status for dev; driven from keys
   x <- GetReg RegN
   b1 <- LitB 1 >>= TestBit x >>= If
   b0 <- LitB 0 >>= TestBit x >>= If
@@ -39,18 +40,19 @@ statusDev = do
   x <- GetReg RegP
   b0 <- LitB 0 >>= TestBit x >>= If
   let pat = if b0 then PatR else PatL
-  pure Status { nt, pat }
+  pure Status { nt, pat }-}
+
 
 doPix :: XY (Byte p) -> Eff p ()
 doPix xy@XY{x,y} = do
-  --EqB x y >>= Assert "eq-x-y" -- TODO: just testin assert works
-
+  Status{nt,pat} <- statusDev
+  EqB x x >>= Assert "eq-x-x" -- TODO: just testin assert works
   HiLo{hi=coarseX,lo=fineX} <- splitCourseFine x
   HiLo{hi=coarseY,lo=fineY} <- splitCourseFine y
   let coarse = XY {x = coarseX, y = coarseY}
   let fine = XY {x = fineX, y = fineY}
-  (pat,tile) <- pickViaNameTable coarse
-  (b,c) <- getAttributeTableBits coarse
+  tile <- pickViaNameTable nt coarse
+  (b,c) <- getAttributeTableBits nt coarse
   d <- getTilePlaneBit pat Plane2 tile fine
   e <- getTilePlaneBit pat Plane1 tile fine
   col <- colourOfPlanes (b,c) (d,e)
@@ -63,9 +65,8 @@ splitCourseFine b = do
   hi <- ShiftR b 3 -- 0..31
   pure HiLo {hi,lo}
 
-pickViaNameTable :: XY (Byte p) -> Eff p (Pat, Byte p)
-pickViaNameTable coarse = do
-  Status{nt,pat} <- statusDev
+pickViaNameTable :: NT -> XY (Byte p) -> Eff p (Byte p)
+pickViaNameTable nt coarse = do
   ntHiBase <- ntHiFromStatus nt
   let XY{x,y} = coarse -- both x/y are max 5 bits
   mask <- LitB 7
@@ -76,14 +77,13 @@ pickViaNameTable coarse = do
   lo <- BwOr x yLo3shifted
   a <- MakeAddr HiLo { hi, lo }
   tile <- ReadVmem a
-  pure (pat,tile)
+  pure tile
 
-getAttributeTableBits :: XY (Byte p) -> Eff p (Bit p, Bit p)
-getAttributeTableBits coarse = do
+getAttributeTableBits :: NT -> XY (Byte p) -> Eff p (Bit p, Bit p)
+getAttributeTableBits nt coarse = do
   let XY{x,y} = coarse -- both x/y are max 5 bits
   (x432,x1) <- split x
   (y432,y1) <- split y
-  Status{nt} <- statusDev
   ntHiBase <- ntHiFromStatus nt
   hi <- do
     three <- LitB 3

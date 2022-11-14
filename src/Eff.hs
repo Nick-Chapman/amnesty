@@ -20,7 +20,7 @@ data Eff p x where
   Assert :: String -> Bit p -> Eff p ()
   If :: Bit p -> Eff p Bool
   Repeat :: Int -> Eff p () -> Eff p ()
-  IsPressed :: Key -> Eff p Bool
+  IsPressed :: Key -> Eff p (Bit p)
   EmitPixel :: XY (Byte p) -> Byte p -> Eff p ()
   WriteVmem :: Addr p -> Byte p -> Eff p ()
   ReadVmem :: Addr p -> Eff p (Byte p)
@@ -30,13 +30,12 @@ data Eff p x where
   Bit1 :: Eff p (Bit p)
   LitB :: Word8 -> Eff p (Byte p)
   LitA :: Word16 -> Eff p (Addr p)
-
+  IteB :: Bit p -> Byte p -> Byte p -> Eff p(Byte p)
   MakeAddr :: HiLo (Byte p) -> Eff p (Addr p)
   SplitAddr :: Addr p -> Eff p (HiLo (Byte p))
   MakeByte :: (Bit p, Bit p, Bit p, Bit p, Bit p, Bit p, Bit p, Bit p) -> Eff p (Byte p)
   ShiftL :: Byte p -> Int -> Eff p (Byte p)
   ShiftR :: Byte p -> Int -> Eff p (Byte p)
-
   TestBit :: Byte p -> Byte p -> Eff p (Bit p)
   EqB :: Byte p -> Byte p -> Eff p (Bit p)
   AddB :: Byte p -> Byte p -> Eff p (Byte p)

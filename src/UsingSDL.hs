@@ -1,5 +1,5 @@
 
-module UsingSDL (runTerm,runSDL) where
+module UsingSDL (Config(..),runTerm,runSDL) where
 
 import Behaviour (Behaviour(..),Report(..))
 import Control.Concurrent (threadDelay)
@@ -7,10 +7,9 @@ import Control.Monad (when)
 import Data.List.Extra (groupSort)
 import Data.Map (Map)
 import Data.Word8 (Word8)
-import Emulate (Effect,emulate)
+import Eff (Eff)
 import Foreign.C.Types (CInt)
 import Frame (Frame)
---import GHC.Int (Int64)
 import NesFile (NesFile)
 import SDL (Renderer,Rectangle(..),V2(..),V4(..),Point(P),($=))
 import System.Clock (TimeSpec(..),Clock(Monotonic),getTime)
@@ -19,30 +18,43 @@ import Types (Picture(..),XY(..),RGB(..),Key(..),Keys(..))
 import qualified Data.Map.Strict as Map (lookup,fromList,toList)
 import qualified Data.Set as Set (empty,insert,delete)
 import qualified Data.Text as Text (pack)
+import qualified Emulate as Slow (emulate)
+import qualified FastEm as Fast (emulate)
 import qualified Frame (toPicture,toFrameHash)
 import qualified SDL
 
-runTerm :: Bool -> Maybe Int -> NesFile -> Effect () -> IO ()
-runTerm verb maxM nesFile the_effect = do
+data Config = Config
+  { verb :: Bool
+  , fast :: Bool
+  , dump :: Bool
+  }
+
+emulate :: Config -> NesFile -> (forall p. Eff p ()) -> Behaviour
+emulate Config{fast,dump} = if
+  | fast -> Fast.emulate dump
+  | otherwise -> Slow.emulate
+
+runTerm :: Config -> Maybe Int -> NesFile -> (forall p. Eff p ()) -> IO ()
+runTerm conf@Config{verb} maxM nesFile the_effect = do
   let stop = case maxM of
         Nothing -> \_ -> False
-        Just max -> \n -> n==max
+        Just max -> \n -> n>max
   let keys = Keys { pressed = Set.empty }
   let
     loop :: TimeSpec -> Int -> Behaviour -> IO ()
-    loop time0 n = \case
-      Log s b -> do putStrLn s; loop time0 n b
-      Poll f -> loop time0 n (f keys)
-      Render frame report behaviour -> do
-        let h = Frame.toFrameHash frame
-        if h /= h then error "" else do -- hack, forcing!
-          time <- getTime Monotonic
-          printStatLine verb World { keys, frameCount = n } frame (time-time0) 0 report
-          if stop n then pure () else
+    loop time0 n behaviour = if stop n then pure () else do
+      case behaviour of
+        Log s b -> do putStrLn s; loop time0 n b
+        Poll f -> loop time0 n (f keys)
+        Render frame report behaviour -> do
+          let h = Frame.toFrameHash frame
+          if h /= h then error "" else do -- hack, forcing!
+            time <- getTime Monotonic
+            printStatLine verb World { keys, frameCount = n } frame (time-time0) 0 report
             loop time (n+1) behaviour
 
   time0 <- getTime Monotonic
-  loop time0 1 $ emulate nesFile the_effect
+  loop time0 1 $ emulate conf nesFile the_effect
 
 
 data ScreenSpec = ScreenSpec
@@ -55,8 +67,8 @@ data World = World
   , frameCount :: Int
   }
 
-runSDL :: Bool -> NesFile -> Effect () -> IO ()
-runSDL verb nesfile the_effect = do
+runSDL :: Config -> NesFile -> (forall p. Eff p ()) -> IO ()
+runSDL conf@Config{verb} nesfile the_effect = do
   let accpix = False
   let ss = ScreenSpec {sf = 2,size = XY { x = 256, y = 240 } }
   let! _ = keyMapTable
@@ -71,7 +83,7 @@ runSDL verb nesfile the_effect = do
   let assets = DrawAssets { renderer, ss, offset = border, accpix }
   let keys0 = Keys { pressed = Set.empty }
   let world0 = World { keys = keys0, frameCount = 1 }
-  let behaviour0 = emulate nesfile the_effect
+  let behaviour0 = emulate conf nesfile the_effect
 
   let
     loop :: TimeSpec -> World -> Behaviour -> IO ()

@@ -1,5 +1,5 @@
 
-module Emulate (Effect,emulate) where
+module Emulate (emulate) where
 
 import Behaviour (Behaviour(..),Report(..))
 import Col6 (Col6,makeCol6)
@@ -12,8 +12,8 @@ import Rom8k (Rom8k)
 import Text.Printf (printf)
 import Types (XY(..),Keys(..),Reg(..))
 import qualified Data.Map as Map (empty,insert,lookup,fromList)
-import qualified Rom8k (read)
 import qualified Primitive as Prim
+import qualified Rom8k (read)
 
 data DuringEmulation
 instance Phase DuringEmulation where
@@ -78,6 +78,8 @@ inner c@Context{chr1,keys} s@State{vmemReadCount,vramWriteCount} e k = case e of
   Bit1 -> k s True
   LitB n -> k s n
   LitA n -> k s n
+
+  IteB i t e -> k s (if i then t else e)
 
   MakeAddr x -> prim1 Prim.MakeAddr x
   SplitAddr x -> prim1 Prim.SplitAddr x

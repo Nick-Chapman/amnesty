@@ -68,6 +68,15 @@ doKeys = do
 doKey :: Key -> Reg -> Eff p ()
 doKey key reg = do
   b <- IsPressed key
+  v <- GetReg reg
+  one <- LitB 1
+  v1 <- AddB v one
+  v' <- IteB b v1 v
+  SetReg reg v'
+
+{-doKey :: Key -> Reg -> Eff p ()
+doKey key reg = do
+  b <- IsPressed key >>= If
   if not b then pure () else do
     incrementReg reg
 
@@ -76,4 +85,4 @@ incrementReg reg = do
   v <- GetReg reg
   one <- LitB 1
   v' <- AddB v one
-  SetReg reg v'
+  SetReg reg v'-}

@@ -1,12 +1,13 @@
 
+Make FastEm faster. more imperative?
+export compiled code as C
+
 honesty/hnes: compute frame hash fingerprint.
 
 Sim control: pause on space? do control in effect?
 Keys vs buttons.
 
 Concrete types for Bit/Byte(v)/Addr; pp hex; conversion
-
-Speed up emulation by compilation from effect to (typed?) Code.
 
 Reduce Vmem read by x8 for BG rendering. Regs to save tile bytes. And att bytes.
 Sprite evaluation; test via OAM dump from honesty. pick 8 of 64 sprites per line.

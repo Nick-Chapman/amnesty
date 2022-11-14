@@ -1,8 +1,8 @@
 
 module Primitive (P1(..),P2(..),evalP1,evalP2) where
 
-import Data.Word (Word8,Word16)
 import Data.Bits (testBit,shiftL,shiftR,(.&.),(.|.))
+import Data.Word (Word8,Word16)
 import Types (HiLo(..))
 
 data P1 arg ret where
@@ -26,7 +26,7 @@ deriving instance Show (P2 a b r)
 evalP1 :: P1 a r -> a -> r
 evalP1 = \case
   MakeAddr -> \HiLo{hi,lo} -> fromIntegral hi `shiftL` 8 .|. fromIntegral lo
-  SplitAddr -> undefined
+  SplitAddr -> \a -> HiLo { hi = fromIntegral a `shiftR` 8, lo = fromIntegral a .&. 0xff }
   MakeByte ->
     \(a,b,c,d,e,f,g,h) ->
       (if a then 128 else 0) .|.
