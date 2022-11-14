@@ -95,6 +95,8 @@ getAttributeTableBits nt coarse = do
     BwOr base xy
   a <- MakeAddr HiLo { hi, lo }
   v <- ReadVmem a
+
+{- Original: Using If
   bx1 <- If x1
   by1 <- If y1
   let (p,q) =
@@ -103,6 +105,20 @@ getAttributeTableBits nt coarse = do
         else (if bx1 then (3,2) else (1,0))
   b <- LitB p >>= TestBit v
   c <- LitB q >>= TestBit v
+-}
+
+  -- Avoiding use of If
+  zero <- LitB 0
+  one <- LitB 1
+  two <- LitB 2
+  four <- LitB 4
+  x1L <- IteB x1 two zero
+  y1LL <- IteB y1 four zero
+  q <- BwOr x1L y1LL
+  p <- BwOr q one
+  b <- TestBit v p
+  c <- TestBit v q
+
   pure (b,c)
   where
     split :: Byte p -> Eff p (Byte p, Bit p)
