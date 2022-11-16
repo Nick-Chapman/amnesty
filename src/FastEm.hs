@@ -42,31 +42,32 @@ type E16 = Exp Word16
 type Effect a = Eff DuringCompilation a
 
 compile :: Effect () -> Code
-compile e = comp e $ \() -> Stop
+compile e = comp CState { u = 1 } e $ \CState{} () -> Stop
 
-comp :: forall e. Effect e -> (e -> Code) -> Code
-comp e k = case e of
+data CState = CState { u :: Int }
 
-  Ret x -> k x
-  Bind e f -> comp e $ \a -> comp (f a) k
-  Assert mes b -> Do (A_Assert b mes) $ k ()
-  If b -> CodeIf b (k True) (k False)
-  Repeat n e -> Do (A_Repeat n (comp e k)) $ Stop
-  IsPressed key -> k (E_IsPressed key)
-  EmitPixel xy v -> Do (A_EmitPixel xy v) $ k ()
-  ReadVmem a -> k (E_ReadVmem a) -- TOOD: need binding here
-  WriteVmem a v -> Do (A_WriteMem a v) $ k ()
-  --GetReg r -> k (E_GetReg r)
-  GetReg r -> let x = genId (show r) in Do (A_Let x (E_GetReg r)) $ k (E_Var x)
-  SetReg r v -> Do (A_SetReg r v) $ k ()
-  Bit0 -> k (E_Const False)
-  Bit1 -> k (E_Const True)
-  LitB x -> k (E_Const x)
-  LitA x -> k (E_Const x)
-  IteB i t e -> k (E_IteB i t e)
-  MakeAddr x -> k (makeUnary Prim.MakeAddr (E_HL x))
+comp :: forall e. CState -> Effect e -> (CState -> e -> Code) -> Code
+comp s e k = case e of
+
+  Ret x -> k s x
+  Bind e f -> comp s e $ \s a -> comp s (f a) k
+  Assert mes b -> Do (A_Assert b mes) $ k s ()
+  If b -> CodeIf b (k s True) (k s False)
+  Repeat n e -> Do (A_Repeat n (comp s e k)) $ Stop
+  IsPressed key -> k s (E_IsPressed key)
+  EmitPixel xy v -> Do (A_EmitPixel xy v) $ k s ()
+  ReadVmem a -> share "m" k s (E_ReadVmem a)
+  WriteVmem a v -> Do (A_WriteMem a v) $ k s ()
+  GetReg r -> share "r" k s (E_GetReg r)
+  SetReg r v -> Do (A_SetReg r v) $ k s ()
+  Bit0 -> k s (E_Const False)
+  Bit1 -> k s (E_Const True)
+  LitB x -> k s (E_Const x)
+  LitA x -> k s (E_Const x)
+  IteB i t e -> k s (E_IteB i t e)
+  MakeAddr x -> k s (makeUnary Prim.MakeAddr (E_HL x))
   SplitAddr x -> undefined x
-  MakeByte x -> k (makeUnary Prim.MakeByte (E_B8 x))
+  MakeByte x -> k s (makeUnary Prim.MakeByte (E_B8 x))
   TestBit x y -> prim2 Prim.TestBit x y
   EqB x y -> prim2 Prim.EqB x y
   AddB x y -> prim2 Prim.AddB x y
@@ -78,7 +79,8 @@ comp e k = case e of
 
   where
     prim2 :: (Show x, Show y) => Prim.P2 x y r -> Exp r ~ e => Exp x -> Exp y -> Code
-    prim2 p2 x y = k (makeBinary p2 x y)
+    prim2 p2 x y = k s (makeBinary p2 x y)
+
 
 makeUnary :: (Show x) => Prim.P1 x r -> Exp x -> Exp r
 makeUnary p1 x = case x of
@@ -90,10 +92,14 @@ makeBinary p2 x y = case (x,y) of
   (E_Const x,E_Const y) | doConstFolding -> E_Const (Prim.evalP2 p2 x y)
   _ -> Binary p2 x y
 
-genId :: String -> Identifier a
-genId tag = do
-  let u = 42 -- TODO: fix this hack
-  Identifier tag u
+
+share :: (Show a, Typeable a) => String -> (CState -> Exp a -> Code) -> CState -> Exp a -> Code
+share tag k s thing =
+  genId s tag $ \s x -> Do (A_Let x thing) $ k s (E_Var x)
+
+genId :: CState -> String -> (CState -> Identifier a -> r) -> r
+genId s@CState{u} tag k = do
+  k s { u = u + 1 } (Identifier tag u)
 
 ----------------------------------------------------------------------
 -- code
@@ -109,8 +115,7 @@ data Act
   | A_WriteMem E16 E8
   | A_Assert E1 String
   | A_EmitPixel (XY E8) E8
-  | A_Let Id8 E8
-  deriving Show
+  | forall a. (Typeable a, Show a) => A_Let (Identifier a) (Exp a)
 
 data Exp a where
   E_Const :: a -> Exp a
@@ -123,8 +128,6 @@ data Exp a where
   E_B8 :: Tup8 (Exp Bool) -> Exp (Tup8 Bool)
   E_HL :: HiLo (Exp Word8) -> Exp (HiLo Word8)
   E_Var :: Typeable a => Identifier a -> Exp a
-
-type Id8 = Identifier Word8
 
 data Identifier a where
   Identifier :: String -> Int -> Identifier a
