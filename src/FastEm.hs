@@ -1,8 +1,10 @@
 
-module FastEm (emulate) where
+module FastEm (compile,execute,emulate) where
 
 import Behaviour (Behaviour(..),Report(..))
+import Code (Code(..),Act(..),Exp(..),Identifier(..))
 import Col6 (Col6,makeCol6)
+import Data.Dynamic (Typeable,Dynamic,toDyn,fromDynamic)
 import Data.Map (Map)
 import Data.Word (Word8,Word16)
 import Eff (Phase(..),Eff(..))
@@ -10,12 +12,10 @@ import Frame (makeFrame)
 import NesFile (NesFile(..))
 import Rom8k (Rom8k)
 import Text.Printf (printf)
-import Types (Key,XY(..),Keys(..),Reg(..),HiLo(..))
+import Types (XY(..),Keys(..),Reg(..))
 import qualified Data.Map as Map (empty,insert,lookup,fromList)
 import qualified Primitive as Prim
 import qualified Rom8k (read)
-
-import Data.Dynamic (Typeable,Dynamic,toDyn,fromDynamic)
 
 emulate :: Bool -> NesFile -> Effect () -> Behaviour -- compile;(dump);execute
 emulate dump nesFile eff = do
@@ -78,16 +78,16 @@ comp s e k = case e of
   ShiftR x y -> prim2 Prim.ShiftR x (E_Const y)
 
   where
-    prim2 :: (Show x, Show y) => Prim.P2 x y r -> Exp r ~ e => Exp x -> Exp y -> Code
+    prim2 :: (Show x, Show y, Show r) => Prim.P2 x y r -> Exp r ~ e => Exp x -> Exp y -> Code
     prim2 p2 x y = k s (makeBinary p2 x y)
 
 
-makeUnary :: (Show x) => Prim.P1 x r -> Exp x -> Exp r
+makeUnary :: (Show x, Show r) => Prim.P1 x r -> Exp x -> Exp r
 makeUnary p1 x = case x of
   E_Const x | doConstFolding -> E_Const (Prim.evalP1 p1 x)
   _ -> Unary p1 x
 
-makeBinary :: (Show x, Show y) => Prim.P2 x y r -> Exp x -> Exp y -> Exp r
+makeBinary :: (Show x, Show y, Show r) => Prim.P2 x y r -> Exp x -> Exp y -> Exp r
 makeBinary p2 x y = case (x,y) of
   (E_Const x,E_Const y) | doConstFolding -> E_Const (Prim.evalP2 p2 x y)
   _ -> Binary p2 x y
@@ -100,89 +100,6 @@ share tag k s thing =
 genId :: CState -> String -> (CState -> Identifier a -> r) -> r
 genId s@CState{u} tag k = do
   k s { u = u + 1 } (Identifier tag u)
-
-----------------------------------------------------------------------
--- code
-
-data Code
-  = Do Act Code
-  | CodeIf (Exp Bool) Code Code
-  | Stop
-
-data Act
-  = A_Repeat Int Code
-  | A_SetReg Reg E8
-  | A_WriteMem E16 E8
-  | A_Assert E1 String
-  | A_EmitPixel (XY E8) E8
-  | forall a. (Typeable a, Show a) => A_Let (Identifier a) (Exp a)
-
-data Exp a where
-  E_Const :: a -> Exp a
-  E_IsPressed :: Key -> E1
-  E_GetReg :: Reg -> E8
-  E_ReadVmem :: E16 -> E8
-  Unary :: Show x => Prim.P1 x r -> Exp x -> Exp r
-  Binary :: (Show x, Show y) => Prim.P2 x y r -> Exp x -> Exp y -> Exp r
-  E_IteB :: E1 -> E8 -> E8 -> E8
-  E_B8 :: Tup8 (Exp Bool) -> Exp (Tup8 Bool)
-  E_HL :: HiLo (Exp Word8) -> Exp (HiLo Word8)
-  E_Var :: Typeable a => Identifier a -> Exp a
-
-data Identifier a where
-  Identifier :: String -> Int -> Identifier a
-
-instance Show (Identifier a) where
-  show (Identifier tag i) = tag ++ show i
-
-type Tup8 x = (x, x, x, x, x, x, x, x)
-
-----------------------------------------------------------------------
--- pp
-
-instance Show Code where show = unlines . pretty 0
-
-pretty :: Int -> Code -> [String]
-pretty i = \case
-  Stop -> ["Stop"]
-  Do act code -> prettyAct i act ++ pretty i code
-  CodeIf cond c1 c2 -> concat
-    [ [tab i "if (" ++ show cond ++ ") {"]
-    , pretty (i+2) c1
-    , [tab i "} else {"]
-    , pretty (i+2) c2
-    , [tab i "}"]
-    ]
-
-prettyAct :: Int -> Act -> [String]
-prettyAct i = \case
-  A_Repeat n c -> concat
-    [ [tab i "repeat (" ++ show n ++ ") {"]
-    , pretty (i+2) c
-    , [tab i "}"]
-    ]
-  A_SetReg r v -> [tab i $ "SetReg" ++ show (r,v)]
-  A_WriteMem a v -> [tab i $ "writeMem" ++ show (a,v)]
-  A_Assert b m -> [tab i $ "Assert" ++ show (b,m)]
-  A_EmitPixel xy col -> [tab i $ "EmitPixel" ++ show (xy,col)]
-  A_Let x e -> [tab i $ "Let" ++ show (x,e)]
-
-tab :: Int -> String -> String
-tab n s = take n (repeat ' ') ++ s
-
---deriving instance Show a => Show (Exp a)
-instance Show a => Show (Exp a) where
-  show = \case
-    E_Const x -> show x
-    E_IsPressed key -> show key
-    E_GetReg reg -> show reg
-    E_ReadVmem a -> "ReadVmem:(" ++ show a ++ ")"
-    Unary p1 x -> show p1 ++ "(" ++ show x ++ ")"
-    Binary p2 x y -> show p2 ++ show (x,y)
-    E_IteB i t e -> "Ite" ++ show (i,t,e)
-    E_B8 v -> show v
-    E_HL v -> show v
-    E_Var x -> show x
 
 ----------------------------------------------------------------------
 -- execute
@@ -250,6 +167,8 @@ eval q d@Context{chr1,keys=Keys{pressed}} s@State{regs} = \case
   --E_HL HiLo{hi,lo}  -> HiLo {hi = eval q d s hi, lo = eval q d s lo }
   E_HL x -> fmap (eval q d s) x
   E_Var x -> maybe (error (show ("E_Var",x))) id $ lookupB q x
+
+type Tup8 x = (x, x, x, x, x, x, x, x)
 
 fmapTup8 :: (Exp a -> a) -> Tup8 (Exp a) -> Tup8 a
 fmapTup8 x (a,b,c,d,e,f,g,h) = (x a, x b, x c, x d, x e, x f, x g, x h)

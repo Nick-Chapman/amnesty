@@ -3,6 +3,9 @@ module Amnesty (main) where
 
 import Eff (Eff)
 import System.Environment (getArgs)
+import NesFile (NesFile)
+import qualified C (dump)
+import qualified FastEm (compile)
 import qualified NesFile (load)
 import qualified System (showCHR,dk50,dk400)
 import qualified UsingSDL (Config(..),runTerm,runSDL)
@@ -35,7 +38,7 @@ config0 = Config
   , effect = System.showCHR
   }
 
-data Mode = SDL | NoPic
+data Mode = SDL | NoPic | CDump
 
 parseCommandLine :: [String] -> Config
 parseCommandLine = loop config0
@@ -54,7 +57,8 @@ parseCommandLine = loop config0
       "-max":n:xs -> loop acc { maxFrame = Just (read n) } xs
       "-reg":xs -> loop acc { mode = NoPic, maxFrame = Just 1 } xs
       "slow":xs -> loop acc { fast = False } xs
-      "dump":xs -> loop acc { dump = True, maxFrame = Just 1 } xs
+      "old-dump":xs -> loop acc { dump = True, maxFrame = Just 1 } xs
+      "dump":xs -> loop acc { mode = CDump } xs
 
       path:xs -> loop acc { path } xs
 
@@ -68,5 +72,12 @@ run Config{path,verb,fast,dump,mode,maxFrame,effect} = do
   case mode of
     NoPic -> UsingSDL.runTerm conf maxFrame nesFile effect
     SDL ->   UsingSDL.runSDL  conf          nesFile effect
+    CDump -> cdump                          nesFile effect
   where
     conf = UsingSDL.Config { verb, fast, dump }
+
+
+cdump :: NesFile -> (forall p. Eff p ()) -> IO ()
+cdump _nesFile eff = do -- TODO: use nesFile
+  let code = FastEm.compile eff
+  putStrLn (C.dump code)
