@@ -3,7 +3,7 @@ module C (dump) where
 
 import Code (Code(..),Act(..),Exp(..),Identifier(..))
 import Data.Word (Word8,Word16)
-import Types (Reg,HiLo(..))
+import Types (Reg,HiLo(..),XY(..))
 import Primitive (P1(..),P2(..))
 import Data.List (intercalate)
 
@@ -24,9 +24,9 @@ cofCodeTop code = CFile [FunDef fd]
 
 cofCode :: Code -> [CStat]
 cofCode = \case
-  Stop -> undefined []
+  Stop -> []
   Do act code -> cofAct act : cofCode code
-  CodeIf cond c1 c2 -> undefined cond c1 c2
+  CodeIf cond c1 c2 -> [If (cofExp cond) (Block (cofCode c1)) (Block (cofCode c2))]
 
 cofAct :: Act -> CStat
 cofAct = \case
@@ -34,7 +34,8 @@ cofAct = \case
   A_SetReg r v -> Expression $ Assign (nameOfReg r) (cofExp v)
   A_WriteMem a v -> Expression $ Call (CName "write_mem") [cofExp a, cofExp v]
   A_Assert b m -> Expression $ Call (CName "my_assert") [cofExp b, LitS m]
-  A_EmitPixel xy col -> undefined xy col
+  A_EmitPixel XY{x,y} col ->
+    Expression $ Call (CName "emitPixel") [cofExp x, cofExp y,see col]
   A_Let x e -> Declare (typeOfIdent x) (nameOfIdent x) (cofExp e)
 
 nameOfReg :: Reg -> CName
@@ -71,10 +72,10 @@ cofPrim1 = \case
 
 cofPrim2 :: P2 a b r -> CExp -> CExp -> CExp
 cofPrim2 = \case
-  TestBit -> undefined
+  TestBit -> \x y -> Call (CName "testbit") [x,y]
   EqB -> BinOp "=="
   AddB -> BinOp "+"
-  SubtractB -> undefined
+  SubtractB -> BinOp "-"
   BwAnd -> BinOp "&"
   BwOr -> BinOp "|"
   ShiftL -> BinOp "<<"

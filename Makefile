@@ -1,6 +1,19 @@
 
 top: reg diff
 
+dev: _build/dk1.o
+
+
+_build/%.o: _build/%.c Makefile
+	@echo Building $<
+	@gcc -Wall -Werror $< -c -o $@
+
+_build/dk1.c: _build .stack carts/dk.nes
+	stack run -- dk dump > $@
+
+_build: ; @mkdir -p $@
+
+
 reg: .reg/smb1 .reg/dk1 .reg/dk50 .reg/dk400
 
 .reg/smb1: .reg .stack carts/smb.nes
