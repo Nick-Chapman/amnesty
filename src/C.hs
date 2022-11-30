@@ -3,7 +3,7 @@ module C (dump) where
 
 import Code (Code(..),Act(..),Exp(..),Identifier(..))
 import Data.Word (Word8,Word16)
-import Types (Reg,HiLo(..),XY(..))
+import Types (Key,Reg,HiLo(..),XY(..))
 import Primitive (P1(..),P2(..))
 import Data.List (intercalate)
 
@@ -15,11 +15,11 @@ dump code = do
 ----------------------------------------------------------------------
 
 cofCodeTop :: Code -> CFile
-cofCodeTop code = CFile [FunDef fd]
+cofCodeTop code = CFile [Include "../c/rt.h", FunDef fd]
   where
     fd = CFunDef { typ, name, body }
-    typ = void
-    name = CName "main"
+    typ = voidType
+    name = CName "ppu"
     body = Block (cofCode code)
 
 cofCode :: Code -> [CStat]
@@ -41,20 +41,26 @@ cofAct = \case
 nameOfReg :: Reg -> CName
 nameOfReg reg = CName ("reg_" ++ show reg)
 
+nameOfKey :: Key -> CName
+nameOfKey key = CName ("Key_" ++ show key)
+
 typeOfIdent :: Identifier a -> CType
-typeOfIdent _ = CType "something"
+typeOfIdent _ = CType "u8"
 
 nameOfIdent :: Identifier a -> CName
 nameOfIdent x = CName (show x)
 
-void :: CType
-void = CType "void"
+voidType :: CType
+voidType = CType "void"
+
+--intType :: CType
+--intType = CType "int"
 
 cofExp :: Exp a -> CExp
 cofExp = \case
   E_Const x -> see x
-  E_IsPressed key -> Call (CName "is_pressed") [see key]
-  E_GetReg reg -> see reg
+  E_IsPressed key -> Call (CName "is_pressed") [Ident $ nameOfKey key]
+  E_GetReg reg -> Ident $ nameOfReg reg
   E_ReadVmem a -> Call (CName "read_mem") [cofExp a]
   Unary p1 x -> cofPrim1 p1 (cofExp x)
   Binary p2 x y -> cofPrim2 p2 (cofExp x) (cofExp y)
@@ -151,7 +157,7 @@ instance Show CFile where
 
 instance Show CTop where
   show = \case
-    Include what -> unwords ["#include",what]
+    Include what -> unwords ["#include",show what]
     FunDef def -> show def
     FunDec dec -> show dec
     ArrDef x -> show x

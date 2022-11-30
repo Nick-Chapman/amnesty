@@ -1,12 +1,23 @@
 
 top: reg diff
 
-dev: _build/dk1.o
+dev: run_dk1
 
+run_dk1: _build/dk1.exe
+	./$^
 
-_build/%.o: _build/%.c Makefile
-	@echo Building $<
-	@gcc -Wall -Werror $< -c -o $@
+_build/%.exe: _build/%.o _build/rt.o
+	#@echo Linking
+	g++ $^ -o $@
+
+_build/rt.o: c/rt.c c/rt.h Makefile
+	#@echo Building $<
+	gcc -Wall -Werror $< -c -o $@
+
+_build/%.o: _build/%.c c/rt.h Makefile
+	#@echo Building $<
+	gcc -Wall -Werror $< -c -o $@
+
 
 _build/dk1.c: _build .stack carts/dk.nes
 	stack run -- dk dump > $@
@@ -34,6 +45,6 @@ reg: .reg/smb1 .reg/dk1 .reg/dk50 .reg/dk400
 	stack build
 	touch $@
 
-.PHONEY diff:
+diff:
 	git diff .reg
 

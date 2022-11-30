@@ -12,7 +12,7 @@ import qualified UsingSDL (Config(..),runTerm,runSDL)
 
 main :: IO ()
 main = do
-  putStrLn "*amnesty*"
+  --putStrLn "*amnesty*"
   args <- getArgs
   let config = parseCommandLine args
   run config
