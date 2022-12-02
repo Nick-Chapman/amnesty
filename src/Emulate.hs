@@ -53,11 +53,14 @@ inner c@Context{chr1,keys} s@State{vmemReadCount,vramWriteCount} e k = case e of
   If b -> k s b
   Repeat n eff -> inner c s (sequence_ [ eff | _ <- [0::Int .. n-1] ]) k
   IsPressed key -> k s (key `elem` pressed keys)
-  EmitPixel xy byte -> k (emitPixel xy (makeCol6 byte) s) ()
+  EmitPixel xy byte -> do
+    Log ("emitPixel " ++ show xy ++ " " ++ show byte) $ do
+    k (emitPixel xy (makeCol6 byte) s) ()
 
   ReadVmem a -> do
     let v = readVmem chr1 s a
     --Log (printf "ReadVmem(%07d): %s --> %s" vmemReadCount (show a) (show  v)) $ do
+    Log (printf "readMem: %04x --> %02x" a v) $ do
     k s { vmemReadCount = 1 + vmemReadCount } v
   WriteVmem a v -> do
     -- TODO: share same MM abstraction for read/write vmem

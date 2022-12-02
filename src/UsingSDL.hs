@@ -26,12 +26,11 @@ import qualified SDL
 data Config = Config
   { verb :: Bool
   , fast :: Bool
-  , dump :: Bool
   }
 
 emulate :: Config -> NesFile -> (forall p. Eff p ()) -> Behaviour
-emulate Config{fast,dump} = if
-  | fast -> Fast.emulate dump
+emulate Config{fast} = if
+  | fast -> Fast.emulate
   | otherwise -> Slow.emulate
 
 runTerm :: Config -> Maybe Int -> NesFile -> (forall p. Eff p ()) -> IO ()

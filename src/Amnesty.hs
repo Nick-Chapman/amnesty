@@ -18,12 +18,12 @@ main = do
   run config
 
 data Config = Config
-  { path :: FilePath
+  { path :: FilePath -- path to .nes cartridge
   , verb :: Bool
-  , fast :: Bool
-  , dump :: Bool
+  , fast :: Bool -- use fast haskell emu (compile/execute) vs slow (emulate)
+  --, dump :: Bool
   , mode :: Mode
-  , maxFrame :: Maybe Int
+  , maxFrame :: Maybe Int -- only for NoPic
   , effect :: forall p. Eff p ()
   }
 
@@ -32,10 +32,10 @@ config0 = Config
   { path = "carts/smb.nes"
   , verb = False
   , fast = True
-  , dump = False
+  --, dump = False
   , mode = SDL
   , maxFrame = Nothing
-  , effect = System.showCHR
+  , effect = System.showCHR -- the semantics to emulate or compile
   }
 
 data Mode = SDL | NoPic | CDump
@@ -57,7 +57,8 @@ parseCommandLine = loop config0
       "-max":n:xs -> loop acc { maxFrame = Just (read n) } xs
       "-reg":xs -> loop acc { mode = NoPic, maxFrame = Just 1 } xs
       "slow":xs -> loop acc { fast = False } xs
-      "old-dump":xs -> loop acc { dump = True, maxFrame = Just 1 } xs
+      --"old-dump":xs -> loop acc { dump = True, maxFrame = Just 1 } xs
+
       "dump":xs -> loop acc { mode = CDump } xs
 
       path:xs -> loop acc { path } xs
@@ -66,7 +67,7 @@ parseCommandLine = loop config0
     dkPath = "carts/dk.nes"
 
 run :: Config -> IO ()
-run Config{path,verb,fast,dump,mode,maxFrame,effect} = do
+run Config{path,verb,fast,mode,maxFrame,effect} = do
   nesFile <- NesFile.load path
   let _ = print nesFile
   case mode of
@@ -74,10 +75,10 @@ run Config{path,verb,fast,dump,mode,maxFrame,effect} = do
     SDL ->   UsingSDL.runSDL  conf          nesFile effect
     CDump -> cdump                          nesFile effect
   where
-    conf = UsingSDL.Config { verb, fast, dump }
+    conf = UsingSDL.Config { verb, fast }
 
 
 cdump :: NesFile -> (forall p. Eff p ()) -> IO ()
-cdump _nesFile eff = do -- TODO: use nesFile
-  let code = FastEm.compile eff
+cdump nesFile eff = do
+  let code = FastEm.compile nesFile eff
   putStrLn (C.dump code)

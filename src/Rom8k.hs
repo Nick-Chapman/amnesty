@@ -3,6 +3,8 @@ module Rom8k
   ( Rom8k
   , init
   , read
+  , size
+  , bytes
   ) where
 
 import Prelude hiding (init,read)
@@ -10,11 +12,11 @@ import Data.Array (Array,(!),listArray)
 import Data.Word (Word8,Word16)
 import Text.Printf (printf)
 
-data Rom8k = Rom8k { arr :: Array Word16 Word8 }
+data Rom8k = Rom8k { arr :: Array Word16 Word8, bytes :: [Word8] }
 
 init :: [Word8] -> Rom8k
 init bytes = if
-  | n == size -> Rom8k { arr = listArray (0,size-1) bytes }
+  | n == size -> Rom8k { arr = listArray (0,size-1) bytes, bytes }
   | otherwise -> error $ "Rom8k.init: " <> show n
   where
     n = fromIntegral (length bytes)

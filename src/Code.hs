@@ -1,8 +1,9 @@
 
-module Code (Code(..),Act(..),Exp(..),Identifier(..)) where
+module Code (Code(..),Prog(..),Act(..),Exp(..),Identifier(..)) where
 
 import Data.Dynamic (Typeable)
 import Data.Word (Word8,Word16)
+import Rom8k (Rom8k)
 import Types (Key,XY(..),Reg(..),HiLo(..))
 import qualified Primitive as Prim
 
@@ -10,13 +11,15 @@ type E1 = Exp Bool
 type E8 = Exp Word8
 type E16 = Exp Word16
 
-data Code
-  = Do Act Code
-  | CodeIf (Exp Bool) Code Code
+data Code = Code { prog :: Prog, chr1 :: Rom8k }
+
+data Prog
+  = Do Act Prog
+  | ProgIf (Exp Bool) Prog Prog
   | Stop
 
 data Act
-  = A_Repeat Int Code
+  = A_Repeat Int Prog
   | A_SetReg Reg E8
   | A_WriteMem E16 E8
   | A_Assert E1 String
@@ -46,13 +49,15 @@ type Tup8 x = (x, x, x, x, x, x, x, x)
 ----------------------------------------------------------------------
 -- pp
 
-instance Show Code where show = unlines . pretty 0
+instance Show Code where show Code{prog} = show prog
 
-pretty :: Int -> Code -> [String]
+instance Show Prog where show = unlines . pretty 0
+
+pretty :: Int -> Prog -> [String]
 pretty i = \case
   Stop -> ["Stop"]
   Do act code -> prettyAct i act ++ pretty i code
-  CodeIf cond c1 c2 -> concat
+  ProgIf cond c1 c2 -> concat
     [ [tab i "if (" ++ show cond ++ ") {"]
     , pretty (i+2) c1
     , [tab i "} else {"]

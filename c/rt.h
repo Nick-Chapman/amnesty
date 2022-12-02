@@ -22,3 +22,5 @@ void emitPixel(u8,u8,u8);
 u1 testbit(u8,u8);
 
 void ppu(void);
+
+extern u8 chr1[]; // [ 8192 ];

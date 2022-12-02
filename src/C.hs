@@ -1,11 +1,12 @@
 
 module C (dump) where
 
-import Code (Code(..),Act(..),Exp(..),Identifier(..))
+import Code (Code(..),Prog(..),Act(..),Exp(..),Identifier(..))
 import Data.Word (Word8,Word16)
 import Types (Key,Reg,HiLo(..),XY(..))
 import Primitive (P1(..),P2(..))
 import Data.List (intercalate)
+import qualified Rom8k
 
 dump :: Code -> String
 dump code = do
@@ -15,27 +16,39 @@ dump code = do
 ----------------------------------------------------------------------
 
 cofCodeTop :: Code -> CFile
-cofCodeTop code = CFile [Include "../c/rt.h", FunDef fd]
+cofCodeTop Code{prog,chr1} = CFile [Include "../c/rt.h"
+                                   , FunDef fd
+                                   , ArrDef arrChr1
+                                   ]
   where
+    arrChr1 = CArrDef
+      { typ = CType "u8"
+      , name  = CName "chr1"
+      , size = LitI (fromIntegral Rom8k.size)
+      , init = map (LitI . fromIntegral) (Rom8k.bytes chr1)
+      }
+
     fd = CFunDef { typ, name, body }
     typ = voidType
     name = CName "ppu"
-    body = Block (cofCode code)
+    body = Block (cofProg prog)
 
-cofCode :: Code -> [CStat]
-cofCode = \case
+cofProg :: Prog -> [CStat]
+cofProg = \case
   Stop -> []
-  Do act code -> cofAct act : cofCode code
-  CodeIf cond c1 c2 -> [If (cofExp cond) (Block (cofCode c1)) (Block (cofCode c2))]
+  Do act code -> cofAct act : cofProg code
+  ProgIf cond c1 c2 -> [If (cofExp cond) (Block (cofProg c1)) (Block (cofProg c2))]
 
 cofAct :: Act -> CStat
 cofAct = \case
-  A_Repeat n c -> Repeat (LitI n) (Block (cofCode c))
+  A_Repeat n c -> Repeat (LitI n) (Block (cofProg c))
   A_SetReg r v -> Expression $ Assign (nameOfReg r) (cofExp v)
   A_WriteMem a v -> Expression $ Call (CName "write_mem") [cofExp a, cofExp v]
   A_Assert b m -> Expression $ Call (CName "my_assert") [cofExp b, LitS m]
   A_EmitPixel XY{x,y} col ->
-    Expression $ Call (CName "emitPixel") [cofExp x, cofExp y,see col]
+    Expression $ Call (CName "emitPixel") [cofExp x, cofExp y
+                                          ,cofExp col --undefined col--see col
+                                          ]
   A_Let x e -> Declare (typeOfIdent x) (nameOfIdent x) (cofExp e)
 
 nameOfReg :: Reg -> CName
@@ -58,22 +71,22 @@ voidType = CType "void"
 
 cofExp :: Exp a -> CExp
 cofExp = \case
-  E_Const x -> see x
+  E_Const x -> Ident (CName (show x)) --undefined x -- see x
   E_IsPressed key -> Call (CName "is_pressed") [Ident $ nameOfKey key]
   E_GetReg reg -> Ident $ nameOfReg reg
   E_ReadVmem a -> Call (CName "read_mem") [cofExp a]
   Unary p1 x -> cofPrim1 p1 (cofExp x)
   Binary p2 x y -> cofPrim2 p2 (cofExp x) (cofExp y)
   E_IteB i t e -> IteOp (cofExp i) (cofExp t) (cofExp e)
-  E_B8 v -> see v -- TODO: hacky hack
+  E_B8 v -> undefined v --see v -- TODO: hacky hack
   E_HL HiLo{hi,lo} -> Call (CName "hilo") [cofExp hi,cofExp lo]
-  E_Var x -> see x
+  E_Var x -> Ident (CName (show x)) --undefined x --see x
 
 cofPrim1 :: P1 a r -> CExp -> CExp
 cofPrim1 = \case
   MakeAddr -> id -- ??? \HiLo{hi,lo} -> Call (CName "make_addr") [cofExp hi,cofExp lo]
   SplitAddr -> undefined
-  MakeByte -> id
+  MakeByte -> undefined -- id
 
 
 cofPrim2 :: P2 a b r -> CExp -> CExp -> CExp
@@ -87,9 +100,9 @@ cofPrim2 = \case
   ShiftL -> BinOp "<<"
   ShiftR -> BinOp ">>"
 
-see :: Show a => a -> CExp -- TODO: temp hack
+_see :: Show a => a -> CExp -- TODO: temp hack
 --see a = LitS (show a)
-see a = Ident (CName (show a))
+_see a = Ident (CName (show a))
 
 
 ----------------------------------------------------------------------

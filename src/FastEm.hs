@@ -2,7 +2,7 @@
 module FastEm (compile,execute,emulate) where
 
 import Behaviour (Behaviour(..),Report(..))
-import Code (Code(..),Act(..),Exp(..),Identifier(..))
+import Code (Code(..),Prog(..),Act(..),Exp(..),Identifier(..))
 import Col6 (Col6,makeCol6)
 import Data.Dynamic (Typeable,Dynamic,toDyn,fromDynamic)
 import Data.Map (Map)
@@ -17,11 +17,11 @@ import qualified Data.Map as Map (empty,insert,lookup,fromList)
 import qualified Primitive as Prim
 import qualified Rom8k (read)
 
-emulate :: Bool -> NesFile -> Effect () -> Behaviour -- compile;(dump);execute
-emulate dump nesFile eff = do
-  let code = compile eff
-  if | dump -> Log (show code) $ do execute nesFile code
-     | otherwise -> execute nesFile code
+emulate :: NesFile -> Effect () -> Behaviour -- compile;execute
+emulate nesFile eff = do
+  let code = compile nesFile eff
+  --Log (show code) $
+  execute code
 
 doConstFolding :: Bool
 doConstFolding = True
@@ -41,18 +41,21 @@ type E16 = Exp Word16
 
 type Effect a = Eff DuringCompilation a
 
-compile :: Effect () -> Code
-compile e = comp CState { u = 1 } e $ \CState{} () -> Stop
+compile :: NesFile -> Effect () -> Code
+compile nesFile e = do
+  let NesFile { chrs = [chr1] } = nesFile
+  let prog = comp CState { u = 1 } e $ \CState{} () -> Stop
+  Code {prog,chr1}
 
 data CState = CState { u :: Int }
 
-comp :: forall e. CState -> Effect e -> (CState -> e -> Code) -> Code
+comp :: forall e. CState -> Effect e -> (CState -> e -> Prog) -> Prog
 comp s e k = case e of
 
   Ret x -> k s x
   Bind e f -> comp s e $ \s a -> comp s (f a) k
   Assert mes b -> Do (A_Assert b mes) $ k s ()
-  If b -> CodeIf b (k s True) (k s False)
+  If b -> ProgIf b (k s True) (k s False)
   Repeat n e -> Do (A_Repeat n (comp s e k)) $ Stop
   IsPressed key -> k s (E_IsPressed key)
   EmitPixel xy v -> Do (A_EmitPixel xy v) $ k s ()
@@ -78,7 +81,7 @@ comp s e k = case e of
   ShiftR x y -> prim2 Prim.ShiftR x (E_Const y)
 
   where
-    prim2 :: (Show x, Show y, Show r) => Prim.P2 x y r -> Exp r ~ e => Exp x -> Exp y -> Code
+    prim2 :: (Show x, Show y, Show r) => Prim.P2 x y r -> Exp r ~ e => Exp x -> Exp y -> Prog
     prim2 p2 x y = k s (makeBinary p2 x y)
 
 
@@ -93,7 +96,7 @@ makeBinary p2 x y = case (x,y) of
   _ -> Binary p2 x y
 
 
-share :: (Show a, Typeable a) => String -> (CState -> Exp a -> Code) -> CState -> Exp a -> Code
+share :: (Show a, Typeable a) => String -> (CState -> Exp a -> Prog) -> CState -> Exp a -> Prog
 share tag k s thing =
   genId s tag $ \s x -> Do (A_Let x thing) $ k s (E_Var x)
 
@@ -104,38 +107,34 @@ genId s@CState{u} tag k = do
 ----------------------------------------------------------------------
 -- execute
 
-execute :: NesFile -> Code -> Behaviour
-execute nesFile code = do
-  let NesFile { chrs = [chr1] } = nesFile
-  let
+execute :: Code -> Behaviour
+execute Code{chr1,prog} = loop state0
+  where
     loop :: State -> Behaviour
     loop s = do
       Poll $ \keys -> do
         let q = emptyB
         let d = Context { chr1, keys }
-        runCode q d s code $ \s -> do
+        runProg q d s prog $ \s -> do
           let State{emitted,regs,vramWriteCount} = s
           let frame = makeFrame emitted
           let report = Report { vmemReadCount = 999, vramWriteCount, regs }
           let s1 = resetState s
           Render frame report (loop s1)
 
-  --Log (show code) $ do -- dump code for inspection
-  loop state0
-
-runCode :: Bindings ->Context -> State -> Code -> (State -> Behaviour) -> Behaviour
-runCode q d s code k = case code of
+runProg :: Bindings ->Context -> State -> Prog -> (State -> Behaviour) -> Behaviour
+runProg q d s code k = case code of
   Do act code -> do
     --Log (show act) $ do
     runAct q d s act $ \q s -> do
-      runCode q d s code k
-  CodeIf i t e -> runCode q d s (if eval q d s i then t else e) k
+      runProg q d s code k
+  ProgIf i t e -> runProg q d s (if eval q d s i then t else e) k
   Stop -> k s
 
 runAct :: Bindings -> Context -> State -> Act -> (Bindings -> State -> Behaviour) -> Behaviour
 runAct q d s@State{regs,vram,vramWriteCount} act k = case act of
   A_Repeat n code -> loop n s
-    where loop n s = if n == 0 then k q s else runCode q d s code $ loop (n-1)
+    where loop n s = if n == 0 then k q s else runProg q d s code $ loop (n-1)
   A_SetReg r v -> do
     let v' = eval q d s v
     --Log (show("SetReg",r,v')) $ do
@@ -148,7 +147,7 @@ runAct q d s@State{regs,vram,vramWriteCount} act k = case act of
   A_EmitPixel xy v -> do
     let xy' = fmap (eval q d s) xy
     let v' = eval q d s v
-    --Log (show("EmitPixel",xy',v')) $ do
+    --Log ("emitPixel " ++ show xy' ++ " " ++ show v') $ do
     k q (emitPixel xy' (makeCol6 v') s)
   A_Let x e -> do
     let v = eval q d s e
