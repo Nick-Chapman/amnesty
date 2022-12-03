@@ -1,24 +1,27 @@
 
 top: reg diff
 
-run: run_dk1
+run: run_dk400
 
 CFLAGS = -Winline -Wall -Werror -O1
 
-# Run the executable to display the character graphics from DK
-run_dk1: _build/dk400.exe
+# Run executable for any Generated C
+run_%: _build/%.exe
 	./$^
 
-# Link
+# Link any Generated C
 _build/%.exe: _build/%.o
-	@echo Linking
 	g++ $^ -o $@ -lSDL2
 
-# Compile (Any) Generated C code
+# Compile any Generated C
 _build/%.o: _build/%.C main.C Makefile
 	gcc $(CFLAGS) -I /usr/include/SDL2 -c $< -o $@
 
-# Generate C to display the character graphics from DK
+
+# Generate C for 4 examples: sm1, dk1, dk50, dk400
+_build/smb1.C: _build .stack carts/smb.nes
+	stack run -- smb dump > $@
+
 _build/dk1.C: _build .stack carts/dk.nes
 	stack run -- dk dump > $@
 
