@@ -1,30 +1,35 @@
 
 top: reg diff
 
-dev: run_dk1
+run: run_dk1
 
+CFLAGS = -Wall -Werror
+
+# Run the executable to display the character graphics from DK
 run_dk1: _build/dk1.exe
 	./$^
 
+# Link objects from (Any) Generated, and Handcoded C
 _build/%.exe: _build/%.o _build/rt.o
 	@echo Linking
-	g++ $^ -o $@
+	g++ $^ -o $@ -lSDL2
 
-_build/rt.o: c/rt.c c/rt.h Makefile
-	@echo Building $<
-	gcc -Wall -Werror $< -c -o $@
+# Compile the Handcoded C runtime
+_build/rt.o: c/rt.C c/rt.h Makefile
+	gcc $(CFLAGS) -I /usr/include/SDL2 -c $< -o $@
 
-_build/%.o: _build/%.c c/rt.h Makefile
-	@echo Building $<
-	gcc -Wall -Werror $< -c -o $@
+# Compile (Any) Generated C code
+_build/%.o: _build/%.C c/rt.h Makefile
+	gcc $(CFLAGS) -c $< -o $@
 
-
-_build/dk1.c: _build .stack carts/dk.nes
+# Generate C to display the character graphics from DK
+_build/dk1.C: _build .stack carts/dk.nes
 	stack run -- dk dump > $@
 
 _build: ; @mkdir -p $@
 
 
+# Regressions...
 reg: .reg/smb1 .reg/dk1 .reg/dk50 .reg/dk400
 
 # show SMB character graphics
@@ -51,4 +56,3 @@ reg: .reg/smb1 .reg/dk1 .reg/dk50 .reg/dk400
 
 diff:
 	git diff .reg
-

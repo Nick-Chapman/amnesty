@@ -1,17 +1,17 @@
 
-typedef _Bool u1;
+typedef bool u1;
 typedef unsigned char u8;
 typedef unsigned short u16;
 
 typedef enum { Key_x, Key_y, Key_z, Key_n, Key_p } Key;
 
-u8 reg_RegX;
-u8 reg_RegY;
-u8 reg_RegZ;
-u8 reg_RegN;
-u8 reg_RegP;
-u8 reg_RegScanX;
-u8 reg_RegScanY;
+extern u8 reg_RegX;
+extern u8 reg_RegY;
+extern u8 reg_RegZ;
+extern u8 reg_RegN;
+extern u8 reg_RegP;
+extern u8 reg_RegScanX;
+extern u8 reg_RegScanY;
 
 #define repeat(n) for (int i = (n); i>0; i--)
 
