@@ -6,7 +6,7 @@ run: run_dk1
 CFLAGS = -Winline -Wall -Werror -O1
 
 # Run the executable to display the character graphics from DK
-run_dk1: _build/dk1.exe
+run_dk1: _build/dk400.exe
 	./$^
 
 # Link
@@ -21,6 +21,13 @@ _build/%.o: _build/%.C main.C Makefile
 # Generate C to display the character graphics from DK
 _build/dk1.C: _build .stack carts/dk.nes
 	stack run -- dk dump > $@
+
+_build/dk50.C: _build .stack carts/dk.nes
+	stack run -- dk50 dump > $@
+
+_build/dk400.C: _build .stack carts/dk.nes
+	stack run -- dk400 dump > $@
+
 
 _build: ; @mkdir -p $@
 

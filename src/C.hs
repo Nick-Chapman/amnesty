@@ -78,15 +78,20 @@ cofExp = \case
   Unary p1 x -> cofPrim1 p1 (cofExp x)
   Binary p2 x y -> cofPrim2 p2 (cofExp x) (cofExp y)
   E_IteB i t e -> IteOp (cofExp i) (cofExp t) (cofExp e)
-  E_B8 v -> undefined v --see v -- TODO: hacky hack
+  E_B8 v -> b8 v
   E_HL HiLo{hi,lo} -> Call (CName "hilo") [cofExp hi,cofExp lo]
   E_Var x -> Ident (CName (show x)) --undefined x --see x
+
+type Tup8 x = (x, x, x, x, x, x, x, x)
+
+b8 :: Tup8 (Exp Bool) -> CExp
+b8 (a,b,c,d,e,f,g,h) = Call (CName "make_b8") (map cofExp [a,b,c,d,e,f,g,h])
 
 cofPrim1 :: P1 a r -> CExp -> CExp
 cofPrim1 = \case
   MakeAddr -> id -- ??? \HiLo{hi,lo} -> Call (CName "make_addr") [cofExp hi,cofExp lo]
   SplitAddr -> undefined
-  MakeByte -> undefined -- id
+  MakeByte -> id
 
 
 cofPrim2 :: P2 a b r -> CExp -> CExp -> CExp

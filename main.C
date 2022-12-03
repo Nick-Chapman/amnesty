@@ -159,14 +159,25 @@ u1 is_pressed(Key key) {
   return 0;
 }
 
+
+u8 vram[0x4000]; //way too much! -- this is the vram address space
+
+inline static
+void write_mem(u16 addr, u8 value) {
+  //printf("writeMem: %04x <- %02x\n",addr,value);
+  vram[addr] = value;
+}
+
 inline static
 u8 read_mem(u16 addr) {
   if (addr < 0x2000) {
-    u8 b = chr1[addr];
-    //printf("readMem: %04x --> %02x\n",addr,b);
-    return b;
+    u8 value = chr1[addr];
+    //printf("readMem: %04x --> %02x\n",addr,value);
+    return value;
   }
-  assert(0);
+  u8 value = vram[addr];
+  //printf("readMem: %04x --> %02x\n",addr,value);
+  return value;
 }
 
 inline static
@@ -186,4 +197,13 @@ void emitPixel(u8 x,u8 y,u8 col6) {
   //printf("emitPixel (%d,%d) %d\n",x,y,col6);
   assert (0 <= col6 && col6 <= 63);
   frame_buffer[x + y * width] = col6;
+}
+
+#define my_assert(a,b) {}
+#define False false
+#define True true
+
+inline static
+u8 make_b8(u1 a, u1 b, u1 c, u1 d, u1 e, u1 f, u1 g, u1 h) {
+  return (a<<7) | (b<<6) | (c<<5) | (d<<4) | (e<<3) | (f<<2) | (g<<1) | (h<<0);
 }
