@@ -3,24 +3,20 @@ top: reg diff
 
 run: run_dk1
 
-CFLAGS = -Wall -Werror -O1
+CFLAGS = -Winline -Wall -Werror -O1
 
 # Run the executable to display the character graphics from DK
 run_dk1: _build/dk1.exe
 	./$^
 
-# Link objects from (Any) Generated, and Handcoded C
-_build/%.exe: _build/%.o _build/rt.o
+# Link
+_build/%.exe: _build/%.o
 	@echo Linking
 	g++ $^ -o $@ -lSDL2
 
-# Compile the Handcoded C runtime
-_build/rt.o: c/rt.C c/rt.h Makefile
-	gcc $(CFLAGS) -I /usr/include/SDL2 -c $< -o $@
-
 # Compile (Any) Generated C code
-_build/%.o: _build/%.C c/rt.h Makefile
-	gcc $(CFLAGS) -c $< -o $@
+_build/%.o: _build/%.C main.C Makefile
+	gcc $(CFLAGS) -I /usr/include/SDL2 -c $< -o $@
 
 # Generate C to display the character graphics from DK
 _build/dk1.C: _build .stack carts/dk.nes

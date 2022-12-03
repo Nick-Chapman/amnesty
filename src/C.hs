@@ -16,7 +16,7 @@ dump code = do
 ----------------------------------------------------------------------
 
 cofCodeTop :: Code -> CFile
-cofCodeTop Code{prog,chr1} = CFile [Include "../c/rt.h"
+cofCodeTop Code{prog,chr1} = CFile [Include "../main.C"
                                    , FunDef fd
                                    , ArrDef arrChr1
                                    ]

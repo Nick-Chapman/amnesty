@@ -1,11 +1,21 @@
 
 #include <assert.h>
 #include <stdio.h>
-#include "rt.h"
-#include "SDL.h"
 #include <sys/time.h> // gettimeofday()
+#include "SDL.h"
 
 typedef unsigned long u64;
+
+typedef bool u1;
+typedef unsigned char u8;
+typedef unsigned short u16;
+
+typedef enum { Key_x, Key_y, Key_z, Key_n, Key_p } Key;
+
+#define repeat(n) for (int i = (n); i>0; i--)
+
+static void ppu(void); // defined in generated code
+extern u8 chr1[]; // deined in generated code
 
 u64 wallclock_time() { //in micro-seconds
   struct timeval tv;
@@ -13,13 +23,13 @@ u64 wallclock_time() { //in micro-seconds
   return tv.tv_sec*(u64)1000000+tv.tv_usec;
 }
 
-u8 reg_RegX;
-u8 reg_RegY;
-u8 reg_RegZ;
-u8 reg_RegN;
-u8 reg_RegP;
-u8 reg_RegScanX;
-u8 reg_RegScanY;
+static u8 reg_RegX;
+static u8 reg_RegY;
+static u8 reg_RegZ;
+static u8 reg_RegN;
+static u8 reg_RegP;
+static u8 reg_RegScanX;
+static u8 reg_RegScanY;
 
 const int scale = 3;
 const int width = 256;
@@ -77,7 +87,7 @@ enum Keys
 
 static u64 keystate;
 
-#define BIT(x) (!!(keystate & (x)))
+#define KEY(x) (!!(keystate & (x)))
 
 static void input() {
   SDL_Event event_buffer[64];
@@ -127,29 +137,29 @@ void print_stats_maybe() {
 }
 
 int main() {
-  printf("main..\n");
   SDL_Window* window = create_window();
   int rflags = SDL_RENDERER_ACCELERATED; //| SDL_RENDERER_PRESENTVSYNC;
   SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, rflags);
-  while (!BIT(KEYS_QUIT)) {
+  while (!KEY(KEYS_QUIT)) {
     input();
     ppu();
-    render(renderer);
+    render(renderer); // most time here! no render: fps: 100 -> 4000
     print_stats_maybe();
   }
   SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);
-  printf("main..done\n");
 }
 
 // ----------------------------------------------------------------------
 // called by generated code...
 
+inline static
 u1 is_pressed(Key key) {
   //assert(0);
   return 0;
 }
 
+inline static
 u8 read_mem(u16 addr) {
   if (addr < 0x2000) {
     u8 b = chr1[addr];
@@ -159,19 +169,21 @@ u8 read_mem(u16 addr) {
   assert(0);
 }
 
+inline static
 u16 hilo(u8 hi,u8 lo) {
   return (hi << 8) | lo;
 }
 
+inline static
 u1 testbit(u8 v,u8 n) {
   //printf("testbit (%d,%d)\n",v,n);
   assert(0 <= n && n < 8);
   return v & (1<<n);
 }
 
+inline static
 void emitPixel(u8 x,u8 y,u8 col6) {
   //printf("emitPixel (%d,%d) %d\n",x,y,col6);
-  //renderPixel(x,y,col6);
   assert (0 <= col6 && col6 <= 63);
   frame_buffer[x + y * width] = col6;
 }
