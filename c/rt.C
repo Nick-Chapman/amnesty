@@ -25,7 +25,7 @@ const int scale = 3;
 const int width = 256;
 const int height = 240;
 
-SDL_Window* createWindow() {
+SDL_Window* create_window() {
   int x = 10000; //SDL_WINDOWPOS_CENTERED;
   int y = 0; //SDL_WINDOWPOS_CENTERED;
   int w = width * scale;
@@ -36,7 +36,7 @@ SDL_Window* createWindow() {
 
 typedef struct { u8 r; u8 g; u8 b; } rgb;
 
-rgb raw[] =
+rgb colours[] =
 {
  {0x66, 0x66, 0x66}, {0x00, 0x2A, 0x88}, {0x14, 0x12, 0xA7}, {0x3B, 0x00, 0xA4},
  {0x5C, 0x00, 0x7E}, {0x6E, 0x00, 0x40}, {0x6C, 0x06, 0x00}, {0x56, 0x1D, 0x00},
@@ -61,7 +61,7 @@ u8 frame_buffer[width * height];
 void render(SDL_Renderer* renderer) {
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
-      rgb col = raw[frame_buffer[x + y * width]];
+      rgb col = colours[frame_buffer[x + y * width]];
       SDL_SetRenderDrawColor(renderer, col.r, col.g, col.b, 255);
       SDL_Rect rect = { x * scale, y * scale, scale, scale };
       SDL_RenderFillRect(renderer, &rect);
@@ -128,7 +128,7 @@ void print_stats_maybe() {
 
 int main() {
   printf("main..\n");
-  SDL_Window* window = createWindow();
+  SDL_Window* window = create_window();
   int rflags = SDL_RENDERER_ACCELERATED; //| SDL_RENDERER_PRESENTVSYNC;
   SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, rflags);
   while (!BIT(KEYS_QUIT)) {

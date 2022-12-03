@@ -3,7 +3,7 @@ top: reg diff
 
 run: run_dk1
 
-CFLAGS = -Wall -Werror
+CFLAGS = -Wall -Werror -O1
 
 # Run the executable to display the character graphics from DK
 run_dk1: _build/dk1.exe
