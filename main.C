@@ -38,8 +38,8 @@ const int height = 240;
 SDL_Window* create_window() {
   int x = 10000; //SDL_WINDOWPOS_CENTERED;
   int y = 0; //SDL_WINDOWPOS_CENTERED;
-  int w = width * scale;
-  int h = height * scale;
+  int w = width * scale + 2;
+  int h = height * scale + 2;
   int flags = 0;
   return SDL_CreateWindow ("amnesty", x, y, w, h, flags);
 }
@@ -69,11 +69,13 @@ rgb colours[] =
 u8 frame_buffer[width * height];
 
 void render(SDL_Renderer* renderer) {
+  SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
+  SDL_RenderClear(renderer);
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
       rgb col = colours[frame_buffer[x + y * width]];
       SDL_SetRenderDrawColor(renderer, col.r, col.g, col.b, 255);
-      SDL_Rect rect = { x * scale, y * scale, scale, scale };
+      SDL_Rect rect = { 1 + x * scale, 1 + y * scale, scale, scale };
       SDL_RenderFillRect(renderer, &rect);
     }
   }
