@@ -2,8 +2,16 @@
 #include <assert.h>
 #include <stdio.h>
 #include "rt.h"
-
 #include "SDL.h"
+#include <sys/time.h> // gettimeofday()
+
+typedef unsigned long u64;
+
+u64 wallclock_time() { //in micro-seconds
+  struct timeval tv;
+  gettimeofday(&tv,NULL);
+  return tv.tv_sec*(u64)1000000+tv.tv_usec;
+}
 
 u8 reg_RegX;
 u8 reg_RegY;
@@ -13,7 +21,7 @@ u8 reg_RegP;
 u8 reg_RegScanX;
 u8 reg_RegScanY;
 
-const int scale = 4;
+const int scale = 3;
 const int width = 256;
 const int height = 240;
 
@@ -28,15 +36,75 @@ SDL_Window* createWindow() {
   return SDL_CreateWindow ("amnesty", x, y, w, h, flags);
 }
 
+enum Keys
+  {
+   KEYS_QUIT = 1
+  };
+
+static u64 keystate;
+
+#define BIT(x) (!!(keystate & (x)))
+
+static void input() {
+  SDL_Event event_buffer[64];
+  size_t num = 0;
+  while (num < 64) {
+    int has = SDL_PollEvent(&event_buffer[num]);
+    if (!has) break;
+    num++;
+  }
+  for (size_t i = 0; i < num; ++i) {
+    SDL_Event e = event_buffer[i];
+    if (e.type == SDL_QUIT) {
+      e.type = SDL_KEYDOWN;
+      e.key.keysym.sym = SDLK_ESCAPE;
+    }
+    if (! (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP)) continue;
+    u64 mask = 0;
+    u64 f = e.type == SDL_KEYDOWN;
+    switch (e.key.keysym.sym) {
+#define KEY_MAP(x, y) case x: mask = y; break;
+      KEY_MAP(SDLK_ESCAPE, KEYS_QUIT);
+    }
+    keystate = (keystate & ~mask) | (-f & mask);
+  }
+}
+
+void print_stats_maybe() {
+  static bool first = true;
+  if (first) {
+    first = false;
+    printf("   n : frame# :  fps\n");
+  }
+  static u64 last_print_time = wallclock_time();
+  static int frames = 0;
+  static int frames_last = 0;
+  static int prints = 0;
+  frames++;
+  u64 now = wallclock_time();
+  bool do_print = (now - last_print_time) > 1000000; // every second
+  if (do_print) {
+    prints++;
+    int fps = frames - frames_last;
+    printf("%4d :%7d :%5d\n" , prints, frames, fps);
+    frames_last = frames;
+    last_print_time = now;
+  }
+}
+
 int main() {
   printf("main..\n");
   SDL_Window* window = createWindow();
   int rflags = SDL_RENDERER_ACCELERATED; //| SDL_RENDERER_PRESENTVSYNC;
   the_renderer = SDL_CreateRenderer(window, -1, rflags);
-  for(int i = 0;; i++) {
-    printf("loop: %d\n",i);
+
+  while (!BIT(KEYS_QUIT)) {
+
+    //printf("loop: %d\n",i);
+    input();
     ppu();
     SDL_RenderPresent(the_renderer);
+    print_stats_maybe();
   }
   SDL_DestroyRenderer(the_renderer);
   SDL_DestroyWindow(window);
