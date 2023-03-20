@@ -1,14 +1,34 @@
 
-module Col6 (Col6,makeCol6,col2rgb) where
+module Col6 (Col6,makeCol6,col2rgb,hashCols) where
 
 import Data.Array(Array,(!),listArray)
-import Data.Hashable (Hashable)
 import Data.Word (Word8)
-import GHC.Generics (Generic)
 import Text.Printf (printf)
 import Types (RGB(..))
 
+import GHC.Generics (Generic)
+import Data.Hashable (Hashable,hashWithSalt)
 newtype Col6 = Col6 Word8 deriving (Generic,Hashable)
+hashCols :: [Col6] -> Int
+hashCols = hashWithSalt myDefaultSalt
+
+
+{-
+import Data.Bits (xor)
+newtype Col6 = Col6 Word8
+hashCols :: [Col6] -> Int
+hashCols = loop myDefaultSalt 0
+  where
+    loop s n = \case
+      [] -> hashInt s n
+      Col6 x : xs -> loop (s `hashInt` fromIntegral x) (n+1) xs
+hashInt :: Salt -> Int -> Salt
+hashInt s x = (s * 16777619) `xor` x
+-}
+
+type Salt = Int
+myDefaultSalt :: Salt
+myDefaultSalt = 0
 
 makeCol6 :: Word8 -> Col6
 makeCol6 w = if w >= 64 then error $ printf "makeCol6: %d" w else Col6 w

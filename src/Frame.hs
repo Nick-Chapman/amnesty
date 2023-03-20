@@ -4,8 +4,7 @@ module Frame
   , toFrameHash, FrameHash
   ) where
 
-import Col6 (Col6,col2rgb)
-import Data.Hashable (hash)
+import Col6 (Col6,col2rgb,hashCols)
 import Data.List (sortOn)
 import Data.Map (Map)
 import Data.Word (Word8)
@@ -38,7 +37,9 @@ toFrameHash Frame {fh} = fh
 data FrameHash = FrameHash Int deriving Eq
 
 makeFrameHash :: [Col6] -> FrameHash
-makeFrameHash cols = FrameHash (hash cols)
+makeFrameHash cols = FrameHash (hashCols cols)
+
 
 instance Show FrameHash where
-  show (FrameHash n) = printf "[%s]" (take 4 (printf "%xd" n) :: String)
+  --show (FrameHash n) = printf "[%s]" (take 4 (printf "%xd" n) :: String)
+  show (FrameHash n) = printf "[%016xd]" n

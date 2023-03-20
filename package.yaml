@@ -4,7 +4,7 @@ description:         NES emulator
 license:             BSD3
 author:              Nick Chapman
 maintainer:          nic@amadido.co.uk
-github:              https://github.com/Nick-Chapman/amnesty.git
+github:              Nick-Chapman/amnesty.git
 
 extra-source-files:
 - README.md
@@ -31,13 +31,14 @@ dependencies:
 
 default-extensions:
 - BangPatterns
+- DeriveAnyClass
 - DeriveFunctor
 - DeriveGeneric
 - DuplicateRecordFields
 - EmptyCase
 - FlexibleContexts
 - GADTs
-- GeneralizedNewtypeDeriving
+#- GeneralizedNewtypeDeriving
 - InstanceSigs
 - LambdaCase
 - MultiWayIf

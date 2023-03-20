@@ -68,6 +68,18 @@ rgb colours[] =
 
 u8 frame_buffer[width * height];
 
+u64 hash_framebuf() {
+  u64 acc = 0;
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      u8 byte = frame_buffer[x + y * width];
+      acc = (acc * 16777619) ^ byte;
+    }
+  }
+  acc = (acc * 16777619) ^ (width*height);
+  return acc;
+}
+
 void render(SDL_Renderer* renderer) {
   SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
   SDL_RenderClear(renderer);
@@ -138,19 +150,32 @@ void print_stats_maybe() {
   }
 }
 
-int main() {
+int xmain() {
   SDL_Window* window = create_window();
   int rflags = SDL_RENDERER_ACCELERATED; //| SDL_RENDERER_PRESENTVSYNC;
   SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, rflags);
   while (!KEY(KEYS_QUIT)) {
     input();
     ppu();
+    static bool once = true;
+    if (once) {
+      printf("[%04lx]\n",hash_framebuf());
+      once = 0;
+    }
     render(renderer); // most time here! no render: fps: 100 -> 4000
     print_stats_maybe();
   }
   SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);
+  return 0;
 }
+
+int main() {
+  ppu();
+  printf("[%04lx]\n",hash_framebuf());
+  return 0;
+}
+
 
 // ----------------------------------------------------------------------
 // called by generated code...
