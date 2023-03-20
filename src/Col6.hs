@@ -8,7 +8,7 @@ import Types (RGB(..))
 
 import GHC.Generics (Generic)
 import Data.Hashable (Hashable,hashWithSalt)
-newtype Col6 = Col6 Word8 deriving (Generic,Hashable)
+newtype Col6 = Col6 Word8 deriving (Eq,Generic,Hashable)
 hashCols :: [Col6] -> Int
 hashCols = hashWithSalt myDefaultSalt
 

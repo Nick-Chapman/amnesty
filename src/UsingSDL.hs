@@ -70,7 +70,7 @@ runSDL :: Config -> NesFile -> (forall p. Eff p ()) -> IO ()
 runSDL conf@Config{verb} nesfile the_effect = do
   let accpix = False
   let ss = ScreenSpec {sf = 2,size = XY { x = 256, y = 240 } }
-  let! _ = keyMapTable
+  let !_ = keyMapTable
   SDL.initializeAll
   let fi = fromIntegral
   let ScreenSpec{sf,size=XY{x=screenW,y=screenH}} = ss

@@ -1,3 +1,5 @@
+{-# OPTIONS -Wno-incomplete-uni-patterns #-}
+{-# OPTIONS -Wno-ambiguous-fields #-}
 
 module FastEm (compile,execute,emulate) where
 

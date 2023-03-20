@@ -44,5 +44,5 @@ data Eff p x where
   BwOr :: Byte p -> Byte p -> Eff p (Byte p)
 
 instance Functor (Eff p) where fmap = liftM
-instance Applicative (Eff p) where pure = return; (<*>) = ap
-instance Monad (Eff p) where return = Ret; (>>=) = Bind
+instance Applicative (Eff p) where pure = Ret; (<*>) = ap
+instance Monad (Eff p) where (>>=) = Bind

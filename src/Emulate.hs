@@ -1,3 +1,5 @@
+{-# OPTIONS -Wno-incomplete-uni-patterns #-}
+{-# OPTIONS -Wno-ambiguous-fields #-}
 
 module Emulate (emulate) where
 
